@@ -164,7 +164,7 @@ export class ShopifyGraphQLClient {
   async getPublishedTheme() {
     const query = `
       query getPublishedTheme {
-        themes(first: 10, roles: MAIN) {
+        themes(first: 10) {
           nodes {
             id
             name
@@ -175,9 +175,21 @@ export class ShopifyGraphQLClient {
     `;
 
     const response = await this.query(query);
-    const publishedTheme = response.data.themes.nodes.find(
-      (theme) => theme.role === 'MAIN'
+    console.log('[DEBUG] Themes query response:', JSON.stringify(response.data, null, 2));
+
+    const themes = response.data.themes.nodes;
+    console.log(`[DEBUG] Found ${themes.length} theme(s):`, themes.map(t => ({ name: t.name, role: t.role })));
+
+    // Find the main/published theme
+    const publishedTheme = themes.find(
+      (theme) => theme.role === 'MAIN' || theme.role === 'main'
     );
+
+    if (!publishedTheme && themes.length > 0) {
+      // If no MAIN theme found, return the first one (likely the published theme)
+      console.log('[DEBUG] No MAIN theme found, using first theme');
+      return themes[0];
+    }
 
     return publishedTheme;
   }

@@ -23,15 +23,20 @@ function initServices(session) {
 router.get('/published', verifyAuth, async (req, res) => {
   try {
     const { graphqlClient } = initServices(req.shopifySession);
+
+    console.log('[DEBUG] Fetching published theme...');
     const theme = await graphqlClient.getPublishedTheme();
+    console.log('[DEBUG] Published theme result:', JSON.stringify(theme, null, 2));
 
     if (!theme) {
+      console.log('[DEBUG] No theme found, returning 404');
       return res.status(404).json({ error: 'No published theme found' });
     }
 
     res.json({ theme });
   } catch (error) {
     console.error('Get published theme error:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({ error: error.message });
   }
 });
