@@ -21,22 +21,29 @@ function initServices(session) {
  * GET /api/themes/published - Get the published theme
  */
 router.get('/published', verifyAuth, async (req, res) => {
+  console.log('========================================');
+  console.log('ROUTE HIT: /api/themes/published');
+  console.log('========================================');
+
   try {
+    console.log('1. Initializing services...');
     const { graphqlClient } = initServices(req.shopifySession);
 
-    console.log('[DEBUG] Fetching published theme...');
+    console.log('2. Calling getPublishedTheme...');
     const theme = await graphqlClient.getPublishedTheme();
-    console.log('[DEBUG] Published theme result:', JSON.stringify(theme, null, 2));
+
+    console.log('3. Theme result:', theme);
 
     if (!theme) {
-      console.log('[DEBUG] No theme found, returning 404');
+      console.log('4. No theme found, returning 404');
       return res.status(404).json({ error: 'No published theme found' });
     }
 
+    console.log('5. Returning theme data');
     res.json({ theme });
   } catch (error) {
-    console.error('Get published theme error:', error);
-    console.error('Error stack:', error.stack);
+    console.error('ERROR in /published route:', error.message);
+    console.error('Stack:', error.stack);
     res.status(500).json({ error: error.message });
   }
 });
