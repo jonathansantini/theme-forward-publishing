@@ -11,10 +11,11 @@
     "@shopify/app-bridge": "^3.7.10",
     "@shopify/app-bridge-react": "^3.7.10",
     "@shopify/polaris": "^12.0.0",
+    "@shopify/shopify-app-session-storage-memory": "^5.0.2",
+    "axios": "^1.6.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.21.1",
-    "axios": "^1.6.2"
+    "react-router-dom": "^6.21.1"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",

@@ -8,6 +8,7 @@ import { MetafieldStorage } from './services/metafield-storage.js';
 import { ThemeModifier } from './services/theme-modifier.js';
 import { Scheduler } from './services/scheduler.js';
 import { ScheduleProcessor } from './jobs/schedule-processor.js';
+import { MemorySessionStorage } from '@shopify/shopify-app-session-storage-memory';
 
 // Import routes
 import authRoutes from './routes/auth.js';
@@ -34,7 +35,7 @@ app.use((req, res, next) => {
 });
 
 // Configure session storage (in-memory for MVP, should use Redis/Postgres in production)
-const sessionStorage = new shopify.session.MemorySessionStorage();
+const sessionStorage = new MemorySessionStorage();
 shopify.config.sessionStorage = sessionStorage;
 
 // Health check endpoint
