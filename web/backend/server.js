@@ -9,6 +9,7 @@ import { ThemeModifier } from './services/theme-modifier.js';
 import { Scheduler } from './services/scheduler.js';
 import { ScheduleProcessor } from './jobs/schedule-processor.js';
 import { MemorySessionStorage } from '@shopify/shopify-app-session-storage-memory';
+import { createProxyMiddleware } from 'http-proxy-middleware';
 
 // Import routes
 import authRoutes from './routes/auth.js';
@@ -108,13 +109,30 @@ app.get('/api/processor/status', (req, res) => {
   res.json(status);
 });
 
-// Serve frontend in production
+// Serve frontend
 if (process.env.NODE_ENV === 'production') {
+  // Production: serve built files
   app.use(express.static('web/frontend/dist'));
 
   app.get('*', (req, res) => {
     res.sendFile('web/frontend/dist/index.html', { root: '.' });
   });
+} else {
+  // Development: proxy to Vite dev server
+  app.use(
+    '/',
+    createProxyMiddleware({
+      target: 'http://localhost:5173',
+      changeOrigin: true,
+      ws: true, // Proxy websockets for HMR
+      // Don't proxy API routes
+      filter: (pathname) => {
+        return !pathname.startsWith('/api') &&
+               !pathname.startsWith('/auth') &&
+               pathname !== '/health';
+      },
+    })
+  );
 }
 
 // Error handling middleware
