@@ -1,0 +1,272 @@
+import { useNavigate } from 'react-router-dom';
+import {
+  Page,
+  Layout,
+  Card,
+  EmptyState,
+  Spinner,
+  Banner,
+  ResourceList,
+  ResourceItem,
+  Text,
+  Badge,
+  ButtonGroup,
+  Button,
+} from '@shopify/polaris';
+import { useSchedules } from '../hooks/useSchedules';
+import { useTimezone } from '../hooks/useTimezone';
+
+function Dashboard() {
+  const navigate = useNavigate();
+  const { schedules, loading, error, deleteSchedule, finalizeSchedule, unpublishSchedule } =
+    useSchedules();
+  const { formatDate, getRelativeTime } = useTimezone();
+
+  const handleCreateSchedule = () => {
+    navigate('/schedules/new');
+  };
+
+  const handleEditSchedule = (id) => {
+    navigate(`/schedules/${id}/edit`);
+  };
+
+  const handleDeleteSchedule = async (id) => {
+    if (confirm('Are you sure you want to delete this schedule?')) {
+      try {
+        await deleteSchedule(id);
+      } catch (error) {
+        alert(`Failed to delete schedule: ${error.message}`);
+      }
+    }
+  };
+
+  const handleFinalizeSchedule = async (id) => {
+    if (
+      confirm(
+        'Finalize this schedule? You will not be able to edit it unless you unpublish it first.'
+      )
+    ) {
+      try {
+        await finalizeSchedule(id);
+      } catch (error) {
+        alert(`Failed to finalize schedule: ${error.message}`);
+      }
+    }
+  };
+
+  const handleUnpublishSchedule = async (id) => {
+    try {
+      await unpublishSchedule(id);
+    } catch (error) {
+      alert(`Failed to unpublish schedule: ${error.message}`);
+    }
+  };
+
+  const getStatusBadge = (status) => {
+    const statusMap = {
+      pending: { status: 'info', label: 'Pending' },
+      active: { status: 'attention', label: 'Active' },
+      completed: { status: 'success', label: 'Completed' },
+      failed: { status: 'critical', label: 'Failed' },
+    };
+
+    const config = statusMap[status] || { status: 'default', label: status };
+    return <Badge status={config.status}>{config.label}</Badge>;
+  };
+
+  if (loading) {
+    return (
+      <Page title="Section Scheduler">
+        <Layout>
+          <Layout.Section>
+            <Card>
+              <div style={{ padding: '40px', textAlign: 'center' }}>
+                <Spinner size="large" />
+                <Text as="p" variant="bodyMd">
+                  Loading schedules...
+                </Text>
+              </div>
+            </Card>
+          </Layout.Section>
+        </Layout>
+      </Page>
+    );
+  }
+
+  if (error) {
+    return (
+      <Page title="Section Scheduler">
+        <Layout>
+          <Layout.Section>
+            <Banner status="critical">
+              <p>Error loading schedules: {error}</p>
+            </Banner>
+          </Layout.Section>
+        </Layout>
+      </Page>
+    );
+  }
+
+  const emptyStateMarkup = (
+    <EmptyState
+      heading="Schedule your first section"
+      action={{
+        content: 'Create Schedule',
+        onAction: handleCreateSchedule,
+      }}
+      image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
+    >
+      <p>
+        Create schedules to automatically show or hide theme sections at specific
+        times.
+      </p>
+    </EmptyState>
+  );
+
+  return (
+    <Page
+      title="Section Scheduler"
+      primaryAction={{
+        content: 'Create Schedule',
+        onAction: handleCreateSchedule,
+      }}
+    >
+      <Layout>
+        <Layout.Section>
+          {schedules.length === 0 ? (
+            <Card>{emptyStateMarkup}</Card>
+          ) : (
+            <Card>
+              <ResourceList
+                resourceName={{ singular: 'schedule', plural: 'schedules' }}
+                items={schedules}
+                renderItem={(schedule) => {
+                  const {
+                    id,
+                    sectionId,
+                    templateName,
+                    action,
+                    executeAt,
+                    status,
+                    recurrence,
+                    finalized,
+                  } = schedule;
+
+                  return (
+                    <ResourceItem
+                      id={id}
+                      onClick={() => !finalized && handleEditSchedule(id)}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'start',
+                        }}
+                      >
+                        <div style={{ flex: 1 }}>
+                          <Text as="h3" variant="headingSm" fontWeight="semibold">
+                            {action === 'hide' ? 'Hide' : 'Show'} {sectionId}
+                          </Text>
+                          <Text as="p" variant="bodySm" color="subdued">
+                            Template: {templateName}
+                          </Text>
+                          <Text as="p" variant="bodySm">
+                            {formatDate(executeAt)} ({getRelativeTime(executeAt)})
+                          </Text>
+                          {recurrence?.enabled && (
+                            <Text as="p" variant="bodySm" color="subdued">
+                              Recurring: {recurrence.type}
+                            </Text>
+                          )}
+                        </div>
+
+                        <div
+                          style={{
+                            display: 'flex',
+                            gap: '8px',
+                            alignItems: 'center',
+                          }}
+                        >
+                          {getStatusBadge(status)}
+                          {finalized && <Badge>Finalized</Badge>}
+                          <ButtonGroup>
+                            {!finalized && status === 'pending' && (
+                              <Button
+                                size="slim"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleFinalizeSchedule(id);
+                                }}
+                              >
+                                Finalize
+                              </Button>
+                            )}
+                            {finalized && (
+                              <Button
+                                size="slim"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleUnpublishSchedule(id);
+                                }}
+                              >
+                                Unpublish
+                              </Button>
+                            )}
+                            {!finalized && (
+                              <Button
+                                size="slim"
+                                tone="critical"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteSchedule(id);
+                                }}
+                              >
+                                Delete
+                              </Button>
+                            )}
+                          </ButtonGroup>
+                        </div>
+                      </div>
+                    </ResourceItem>
+                  );
+                }}
+              />
+            </Card>
+          )}
+        </Layout.Section>
+
+        <Layout.Section variant="oneThird">
+          <Card>
+            <Text as="h2" variant="headingMd">
+              Quick Stats
+            </Text>
+            <div style={{ marginTop: '16px' }}>
+              <Text as="p" variant="bodyMd">
+                <strong>Total Schedules:</strong> {schedules.length}
+              </Text>
+              <Text as="p" variant="bodyMd">
+                <strong>Pending:</strong>{' '}
+                {schedules.filter((s) => s.status === 'pending').length}
+              </Text>
+              <Text as="p" variant="bodyMd">
+                <strong>Active:</strong>{' '}
+                {schedules.filter((s) => s.status === 'active').length}
+              </Text>
+              <Text as="p" variant="bodyMd">
+                <strong>Completed:</strong>{' '}
+                {schedules.filter((s) => s.status === 'completed').length}
+              </Text>
+              <Text as="p" variant="bodyMd">
+                <strong>Failed:</strong>{' '}
+                {schedules.filter((s) => s.status === 'failed').length}
+              </Text>
+            </div>
+          </Card>
+        </Layout.Section>
+      </Layout>
+    </Page>
+  );
+}
+
+export default Dashboard;

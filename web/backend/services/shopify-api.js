@@ -1,0 +1,268 @@
+import '@shopify/shopify-api/adapters/node';
+import { shopifyApi, LATEST_API_VERSION } from '@shopify/shopify-api';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+// Initialize Shopify API
+export const shopify = shopifyApi({
+  apiKey: process.env.SHOPIFY_API_KEY,
+  apiSecretKey: process.env.SHOPIFY_API_SECRET,
+  scopes: process.env.SCOPES?.split(',') || [],
+  hostName: process.env.SHOPIFY_APP_URL?.replace(/https?:\/\//, '') || 'localhost:3000',
+  hostScheme: process.env.NODE_ENV === 'production' ? 'https' : 'http',
+  apiVersion: process.env.SHOPIFY_API_VERSION || LATEST_API_VERSION,
+  isEmbeddedApp: true,
+  logger: {
+    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+  },
+});
+
+/**
+ * GraphQL API Client
+ * Handles all GraphQL queries and mutations to Shopify
+ */
+export class ShopifyGraphQLClient {
+  constructor(session) {
+    this.session = session;
+    this.client = new shopify.clients.Graphql({ session });
+  }
+
+  /**
+   * Execute a GraphQL query with rate limit handling
+   */
+  async query(queryString, variables = {}) {
+    try {
+      const response = await this.client.query({
+        data: {
+          query: queryString,
+          variables,
+        },
+      });
+
+      // Check for rate limiting
+      if (response.headers && response.headers.get('X-Shopify-Shop-Api-Call-Limit')) {
+        const [used, total] = response.headers
+          .get('X-Shopify-Shop-Api-Call-Limit')
+          .split('/');
+
+        console.log(`API Rate Limit: ${used}/${total}`);
+
+        // If we're close to the limit, wait before next request
+        if (parseInt(used) / parseInt(total) > 0.8) {
+          console.warn('Approaching rate limit, implementing delay...');
+          await this.sleep(1000);
+        }
+      }
+
+      return response.body;
+    } catch (error) {
+      console.error('GraphQL query error:', error);
+
+      // Handle rate limiting errors
+      if (error.message?.includes('Throttled') || error.response?.status === 429) {
+        console.log('Rate limited, retrying after delay...');
+        await this.sleep(2000);
+        return this.query(queryString, variables);
+      }
+
+      throw error;
+    }
+  }
+
+  /**
+   * Get theme files from a specific theme
+   */
+  async getThemeFiles(themeId) {
+    const query = `
+      query getThemeFiles($themeId: ID!) {
+        theme(id: $themeId) {
+          id
+          name
+          role
+          files(first: 250) {
+            nodes {
+              filename
+              body {
+                ... on OnlineStoreThemeFileBodyText {
+                  content
+                }
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    const response = await this.query(query, { themeId });
+    return response.data.theme;
+  }
+
+  /**
+   * Get a specific theme file content
+   */
+  async getThemeFile(themeId, filename) {
+    const query = `
+      query getThemeFile($themeId: ID!, $filename: String!) {
+        theme(id: $themeId) {
+          files(first: 1, after: null, filename: $filename) {
+            nodes {
+              filename
+              body {
+                ... on OnlineStoreThemeFileBodyText {
+                  content
+                }
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    const response = await this.query(query, { themeId, filename });
+    const files = response.data.theme.files.nodes;
+    return files.length > 0 ? files[0] : null;
+  }
+
+  /**
+   * Update theme files
+   */
+  async updateThemeFiles(themeId, files) {
+    const mutation = `
+      mutation themeFilesUpsert($themeId: ID!, $files: [OnlineStoreThemeFilesUpsertFileInput!]!) {
+        themeFilesUpsert(themeId: $themeId, files: $files) {
+          upsertedThemeFiles {
+            filename
+            body {
+              ... on OnlineStoreThemeFileBodyText {
+                content
+              }
+            }
+          }
+          userErrors {
+            field
+            message
+          }
+        }
+      }
+    `;
+
+    const response = await this.query(mutation, { themeId, files });
+
+    if (response.data.themeFilesUpsert.userErrors.length > 0) {
+      throw new Error(
+        `Theme file update errors: ${JSON.stringify(response.data.themeFilesUpsert.userErrors)}`
+      );
+    }
+
+    return response.data.themeFilesUpsert.upsertedThemeFiles;
+  }
+
+  /**
+   * Get published theme
+   */
+  async getPublishedTheme() {
+    const query = `
+      query getPublishedTheme {
+        themes(first: 10, roles: MAIN) {
+          nodes {
+            id
+            name
+            role
+          }
+        }
+      }
+    `;
+
+    const response = await this.query(query);
+    const publishedTheme = response.data.themes.nodes.find(
+      (theme) => theme.role === 'MAIN'
+    );
+
+    return publishedTheme;
+  }
+
+  /**
+   * Get shop metafields
+   */
+  async getShopMetafield(namespace, key) {
+    const query = `
+      query getShopMetafield($namespace: String!, $key: String!) {
+        shop {
+          metafield(namespace: $namespace, key: $key) {
+            id
+            namespace
+            key
+            value
+            type
+          }
+        }
+      }
+    `;
+
+    const response = await this.query(query, { namespace, key });
+    return response.data.shop.metafield;
+  }
+
+  /**
+   * Set shop metafields
+   */
+  async setShopMetafields(metafields) {
+    const mutation = `
+      mutation metafieldsSet($metafields: [MetafieldsSetInput!]!) {
+        metafieldsSet(metafields: $metafields) {
+          metafields {
+            id
+            namespace
+            key
+            value
+            type
+          }
+          userErrors {
+            field
+            message
+          }
+        }
+      }
+    `;
+
+    const response = await this.query(mutation, { metafields });
+
+    if (response.data.metafieldsSet.userErrors.length > 0) {
+      throw new Error(
+        `Metafield update errors: ${JSON.stringify(response.data.metafieldsSet.userErrors)}`
+      );
+    }
+
+    return response.data.metafieldsSet.metafields;
+  }
+
+  /**
+   * Get shop information including timezone
+   */
+  async getShopInfo() {
+    const query = `
+      query getShopInfo {
+        shop {
+          id
+          name
+          email
+          ianaTimezone
+          currencyCode
+        }
+      }
+    `;
+
+    const response = await this.query(query);
+    return response.data.shop;
+  }
+
+  /**
+   * Utility: Sleep function for rate limiting
+   */
+  sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+}
+
+export default ShopifyGraphQLClient;

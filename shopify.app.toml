@@ -1,0 +1,24 @@
+# Shopify App Configuration
+name = "Section Scheduler"
+client_id = "" # Will be set from Partner Dashboard
+application_url = "https://your-app.herokuapp.com"
+embedded = true
+
+[build]
+automatically_update_urls_on_dev = true
+dev_store_url = "" # Your development store URL
+
+[access_scopes]
+scopes = "write_themes,read_themes,write_content,read_content"
+
+[auth]
+redirect_urls = [
+  "https://your-app.herokuapp.com/auth/callback",
+  "https://your-app.herokuapp.com/auth/shopify/callback"
+]
+
+[webhooks]
+api_version = "2025-01"
+
+[pos]
+embedded = false
