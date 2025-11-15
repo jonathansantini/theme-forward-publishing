@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
+import { useAuthenticatedFetch } from '@shopify/app-bridge-react';
 
 const API_BASE = '/api';
 
@@ -7,21 +7,23 @@ export function useThemes() {
   const [publishedTheme, setPublishedTheme] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const fetch = useAuthenticatedFetch();
 
   const fetchPublishedTheme = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await axios.get(`${API_BASE}/themes/published`);
-      setPublishedTheme(response.data.theme);
+      const response = await fetch(`${API_BASE}/themes/published`);
+      const data = await response.json();
+      setPublishedTheme(data.theme);
     } catch (err) {
       console.error('Error fetching published theme:', err);
-      setError(err.response?.data?.error || err.message);
+      setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetch]);
 
   useEffect(() => {
     fetchPublishedTheme();
@@ -39,6 +41,7 @@ export function useTemplates(themeId) {
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const fetch = useAuthenticatedFetch();
 
   useEffect(() => {
     if (!themeId) {
@@ -51,18 +54,19 @@ export function useTemplates(themeId) {
       setError(null);
 
       try {
-        const response = await axios.get(`${API_BASE}/themes/${themeId}/templates`);
-        setTemplates(response.data.templates || []);
+        const response = await fetch(`${API_BASE}/themes/${themeId}/templates`);
+        const data = await response.json();
+        setTemplates(data.templates || []);
       } catch (err) {
         console.error('Error fetching templates:', err);
-        setError(err.response?.data?.error || err.message);
+        setError(err.message);
       } finally {
         setLoading(false);
       }
     };
 
     fetchTemplates();
-  }, [themeId]);
+  }, [themeId, fetch]);
 
   return { templates, loading, error };
 }
@@ -71,6 +75,7 @@ export function useSections(themeId, templateName) {
   const [sections, setSections] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const fetch = useAuthenticatedFetch();
 
   useEffect(() => {
     if (!themeId || !templateName) {
@@ -83,20 +88,21 @@ export function useSections(themeId, templateName) {
       setError(null);
 
       try {
-        const response = await axios.get(
+        const response = await fetch(
           `${API_BASE}/themes/${themeId}/templates/${templateName}/sections`
         );
-        setSections(response.data.sections);
+        const data = await response.json();
+        setSections(data.sections);
       } catch (err) {
         console.error('Error fetching sections:', err);
-        setError(err.response?.data?.error || err.message);
+        setError(err.message);
       } finally {
         setLoading(false);
       }
     };
 
     fetchSections();
-  }, [themeId, templateName]);
+  }, [themeId, templateName, fetch]);
 
   return { sections, loading, error };
 }

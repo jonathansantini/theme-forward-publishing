@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import { useAuthenticatedFetch } from '@shopify/app-bridge-react';
 
 const API_BASE = '/api';
 
@@ -8,6 +8,7 @@ export function useTimezone() {
   const [shopInfo, setShopInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const fetch = useAuthenticatedFetch();
 
   useEffect(() => {
     const fetchShopInfo = async () => {
@@ -15,12 +16,13 @@ export function useTimezone() {
       setError(null);
 
       try {
-        const response = await axios.get(`${API_BASE}/shop`);
-        setShopInfo(response.data.shop);
-        setShopTimezone(response.data.shop.ianaTimezone || 'UTC');
+        const response = await fetch(`${API_BASE}/shop`);
+        const data = await response.json();
+        setShopInfo(data.shop);
+        setShopTimezone(data.shop.ianaTimezone || 'UTC');
       } catch (err) {
         console.error('Error fetching shop info:', err);
-        setError(err.response?.data?.error || err.message);
+        setError(err.message);
         // Default to UTC on error
         setShopTimezone('UTC');
       } finally {
@@ -29,7 +31,7 @@ export function useTimezone() {
     };
 
     fetchShopInfo();
-  }, []);
+  }, [fetch]);
 
   /**
    * Format a date in shop timezone
