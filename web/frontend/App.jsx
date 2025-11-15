@@ -12,10 +12,34 @@ function App() {
   const shop = params.get('shop');
   const host = params.get('host');
 
+  // Get API key from environment
+  const apiKey = import.meta.env.VITE_SHOPIFY_API_KEY;
+
+  // Debug logging
+  console.log('App initialization:', {
+    apiKey: apiKey ? '✓ Set' : '✗ Missing',
+    shop: shop || 'not provided',
+    host: host || 'not provided',
+  });
+
+  // Show error if API key is missing
+  if (!apiKey) {
+    return (
+      <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
+        <h1>Configuration Error</h1>
+        <p>
+          <strong>VITE_SHOPIFY_API_KEY</strong> is not set in{' '}
+          <code>web/frontend/.env</code>
+        </p>
+        <p>Please add your Shopify API key to the frontend .env file and restart the dev server.</p>
+      </div>
+    );
+  }
+
   // App Bridge config
   const config = {
-    apiKey: import.meta.env.VITE_SHOPIFY_API_KEY || '',
-    host: host || '',
+    apiKey: apiKey,
+    host: host || window.btoa(`${shop}/admin`) || '',
     forceRedirect: true,
   };
 
