@@ -76,8 +76,12 @@ export class MetafieldStorage {
       throw new Error(`Schedule ${scheduleId} not found`);
     }
 
-    // Prevent editing finalized schedules
-    if (schedules[index].finalized && !updates.hasOwnProperty('finalized')) {
+    // System fields that can always be updated, even on finalized schedules
+    const systemFields = ['status', 'lastRun', 'retryCount', 'executeAt', 'lastError', 'error', 'finalized'];
+    const isSystemUpdate = Object.keys(updates).every(key => systemFields.includes(key));
+
+    // Prevent editing finalized schedules (except for system updates)
+    if (schedules[index].finalized && !isSystemUpdate) {
       throw new Error('Cannot edit finalized schedule. Unpublish first.');
     }
 

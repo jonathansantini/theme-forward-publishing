@@ -164,7 +164,15 @@ export class Scheduler {
           const result = await this.executeSchedule(schedule);
           results.push({ scheduleId: schedule.id, ...result });
         } catch (error) {
-          console.error(`Failed to execute schedule ${schedule.id}:`, error);
+          console.error(`[EXECUTION ERROR] Failed to execute schedule ${schedule.id}:`, error);
+          console.error(`[EXECUTION ERROR] Error details:`, {
+            message: error.message,
+            stack: error.stack,
+            scheduleId: schedule.id,
+            action: schedule.action,
+            sectionId: schedule.sectionId,
+          });
+
           results.push({
             scheduleId: schedule.id,
             success: false,
@@ -172,7 +180,11 @@ export class Scheduler {
           });
 
           // Implement retry logic
-          await this.retrySchedule(schedule, error);
+          try {
+            await this.retrySchedule(schedule, error);
+          } catch (retryError) {
+            console.error(`[RETRY ERROR] Failed to schedule retry for ${schedule.id}:`, retryError);
+          }
         }
       }
     }
