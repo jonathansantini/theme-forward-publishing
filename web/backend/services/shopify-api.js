@@ -174,26 +174,43 @@ export class ShopifyGraphQLClient {
         console.log('[updateThemeFiles] Uploading:', file.filename);
         console.log('[updateThemeFiles] Asset key:', file.filename);
         console.log('[updateThemeFiles] Content length:', file.body.value?.length || 0);
-        console.log('[updateThemeFiles] API path:', `themes/${numericThemeId}/assets`);
 
-        const response = await this.restClient.put({
-          path: `themes/${numericThemeId}/assets`,
-          data: {
+        // Use direct fetch instead of REST client for better control
+        const url = `https://${this.session.shop}/admin/api/2025-01/themes/${numericThemeId}/assets.json`;
+        console.log('[updateThemeFiles] Full URL:', url);
+
+        const response = await fetch(url, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Shopify-Access-Token': this.session.accessToken,
+          },
+          body: JSON.stringify({
             asset: {
               key: file.filename,
               value: file.body.value,
             },
-          },
+          }),
         });
 
+        console.log('[updateThemeFiles] Response status:', response.status, response.statusText);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('[updateThemeFiles] Error response body:', errorText);
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+
+        const data = await response.json();
         console.log('[updateThemeFiles] Upload success:', file.filename);
+        console.log('[updateThemeFiles] Response data:', data);
+
         results.push({
           filename: file.filename,
           success: true,
         });
       } catch (error) {
         console.error(`[updateThemeFiles] Failed to upload ${file.filename}:`, error.message);
-        console.error(`[updateThemeFiles] Error response:`, error.response);
         throw new Error(`Theme file update failed for ${file.filename}: ${error.message}`);
       }
     }
