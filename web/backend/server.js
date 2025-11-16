@@ -195,7 +195,7 @@ async function initializeScheduleProcessor() {
             // Initialize services for this shop
             const graphqlClient = new ShopifyGraphQLClient(session);
             const metafieldStorage = new MetafieldStorage(graphqlClient);
-            const themeModifier = new ThemeModifier(graphqlClient);
+            const themeModifier = new ThemeModifier(graphqlClient, metafieldStorage);
             const scheduler = new Scheduler(graphqlClient, metafieldStorage, themeModifier);
 
             // Process this shop's pending schedules

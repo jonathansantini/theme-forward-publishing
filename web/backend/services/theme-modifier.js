@@ -27,7 +27,9 @@ export class ThemeModifier {
         throw new Error(`Template ${templateName} not found`);
       }
 
-      const templateData = JSON.parse(templateFile.body.content);
+      // Strip comments before parsing JSON
+      const cleanedContent = this.stripJsonComments(templateFile.body.content);
+      const templateData = JSON.parse(cleanedContent);
 
       // 2. Create backup before modification
       await this.createBackup(themeId, templateName, templateFile.body.content);
