@@ -20,6 +20,7 @@ function initServices(session) {
 /**
  * GET /api/themes/published - Get the published theme
  */
+console.log('[THEMES.JS] Route handler being registered for /published');
 router.get('/published', verifyAuth, async (req, res) => {
   console.log('========================================');
   console.log('ROUTE HIT: /api/themes/published');
