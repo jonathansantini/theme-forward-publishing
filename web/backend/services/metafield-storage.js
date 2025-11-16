@@ -114,6 +114,10 @@ export class MetafieldStorage {
     // Get the actual shop GID
     const shopInfo = await this.client.getShopInfo();
 
+    console.log('[saveSchedules] Shop GID:', shopInfo.id);
+    console.log('[saveSchedules] Number of schedules:', schedules.length);
+    console.log('[saveSchedules] Namespace:', this.namespace);
+
     const metafields = [
       {
         ownerId: shopInfo.id, // Use the actual shop GID
@@ -124,7 +128,12 @@ export class MetafieldStorage {
       },
     ];
 
-    return await this.client.setShopMetafields(metafields);
+    console.log('[saveSchedules] Metafield payload:', JSON.stringify(metafields, null, 2));
+
+    const result = await this.client.setShopMetafields(metafields);
+    console.log('[saveSchedules] Metafield save result:', JSON.stringify(result, null, 2));
+
+    return result;
   }
 
   /**
