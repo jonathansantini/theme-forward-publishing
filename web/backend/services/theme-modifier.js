@@ -232,8 +232,8 @@ export class ThemeModifier {
    */
   async listTemplates(themeId) {
     try {
-      console.log('[listTemplates] Fetching theme files for:', themeId);
-      const theme = await this.client.getThemeFiles(themeId);
+      console.log('[listTemplates] Fetching theme file names for:', themeId);
+      const theme = await this.client.getThemeFileNames(themeId);
 
       console.log('[listTemplates] Theme data:', {
         id: theme?.id,

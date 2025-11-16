@@ -103,6 +103,29 @@ export class ShopifyGraphQLClient {
   }
 
   /**
+   * Get theme file names only (optimized for listing)
+   */
+  async getThemeFileNames(themeId) {
+    const query = `
+      query getThemeFileNames($themeId: ID!) {
+        theme(id: $themeId) {
+          id
+          name
+          role
+          files(first: 500) {
+            nodes {
+              filename
+            }
+          }
+        }
+      }
+    `;
+
+    const response = await this.query(query, { themeId });
+    return response.data.theme;
+  }
+
+  /**
    * Get a specific theme file content
    */
   async getThemeFile(themeId, filename) {
