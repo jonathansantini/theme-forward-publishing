@@ -202,6 +202,18 @@ export class ThemeModifier {
   }
 
   /**
+   * Strip C-style comments from JSON string
+   * Shopify theme files may contain comments which are not valid JSON
+   */
+  stripJsonComments(jsonString) {
+    // Remove /* ... */ style comments
+    let result = jsonString.replace(/\/\*[\s\S]*?\*\//g, '');
+    // Remove // style comments (but be careful not to remove URLs)
+    result = result.replace(/^\s*\/\/.*$/gm, '');
+    return result.trim();
+  }
+
+  /**
    * Get all sections from a template
    */
   async getTemplateSections(themeId, templateName) {
@@ -219,7 +231,11 @@ export class ThemeModifier {
       console.log('[getTemplateSections] File found:', templateFile.filename);
       console.log('[getTemplateSections] Content preview:', templateFile.body?.content?.substring(0, 100));
 
-      const templateData = JSON.parse(templateFile.body.content);
+      // Strip comments before parsing
+      const cleanedContent = this.stripJsonComments(templateFile.body.content);
+      console.log('[getTemplateSections] After stripping comments:', cleanedContent.substring(0, 100));
+
+      const templateData = JSON.parse(cleanedContent);
 
       return {
         sections: templateData.sections || {},
