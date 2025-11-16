@@ -53,13 +53,24 @@ router.get('/published', verifyAuth, async (req, res) => {
  * GET /api/themes/:themeId/templates - List all JSON templates in a theme
  */
 router.get('/:themeId/templates', verifyAuth, async (req, res) => {
+  console.log('========================================');
+  console.log('ROUTE HIT: /api/themes/:themeId/templates');
+  console.log('Theme ID:', req.params.themeId);
+  console.log('========================================');
+
   try {
+    console.log('1. Initializing services...');
     const { modifier } = initServices(req.shopifySession);
+
+    console.log('2. Calling listTemplates...');
     const templates = await modifier.listTemplates(req.params.themeId);
 
+    console.log('3. Templates found:', templates?.length || 0);
+    console.log('4. Returning templates');
     res.json({ templates });
   } catch (error) {
-    console.error('List templates error:', error);
+    console.error('ERROR in /templates route:', error.message);
+    console.error('Stack:', error.stack);
     res.status(500).json({ error: error.message });
   }
 });
