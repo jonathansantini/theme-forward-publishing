@@ -1,7 +1,7 @@
 # Shopify App Configuration
 name = "Section Scheduler"
 client_id = "" # Will be set from Partner Dashboard
-application_url = "https://b32e69093959.ngrok-free.app"
+application_url = "https://27db3f03dac0.ngrok-free.app"
 embedded = true
 
 [build]
@@ -13,8 +13,8 @@ scopes = "write_themes,read_themes,write_content,read_content"
 
 [auth]
 redirect_urls = [
-  "https://b32e69093959.ngrok-free.app/auth/callback",
-  "https://b32e69093959.ngrok-free.app/auth/shopify/callback"
+  "https://27db3f03dac0.ngrok-free.app/auth/callback",
+  "https://27db3f03dac0.ngrok-free.app/auth/shopify/callback"
 ]
 
 [webhooks]
