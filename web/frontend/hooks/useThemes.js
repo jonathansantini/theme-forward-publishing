@@ -54,7 +54,7 @@ export function useTemplates(themeId) {
       setError(null);
 
       try {
-        const response = await fetch(`${API_BASE}/themes/${themeId}/templates`);
+        const response = await fetch(`${API_BASE}/themes/${encodeURIComponent(themeId)}/templates`);
         const data = await response.json();
         setTemplates(data.templates || []);
       } catch (err) {
@@ -89,7 +89,7 @@ export function useSections(themeId, templateName) {
 
       try {
         const response = await fetch(
-          `${API_BASE}/themes/${themeId}/templates/${templateName}/sections`
+          `${API_BASE}/themes/${encodeURIComponent(themeId)}/templates/${encodeURIComponent(templateName)}/sections`
         );
         const data = await response.json();
         setSections(data.sections);
