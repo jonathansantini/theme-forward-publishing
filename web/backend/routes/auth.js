@@ -43,6 +43,12 @@ router.get('/auth/callback', async (req, res) => {
     // Store session
     await shopify.config.sessionStorage.storeSession(session);
 
+    // Track this shop as active for schedule processing
+    if (global.activeShops) {
+      global.activeShops.set(session.shop, session);
+      console.log(`Added ${session.shop} to active shops for schedule processing`);
+    }
+
     const host = req.query.host;
     const redirectUrl = `/?shop=${session.shop}&host=${host}`;
 

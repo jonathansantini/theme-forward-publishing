@@ -39,6 +39,9 @@ app.use((req, res, next) => {
 const sessionStorage = new MemorySessionStorage();
 shopify.config.sessionStorage = sessionStorage;
 
+// Track active shops for schedule processing (MVP approach)
+global.activeShops = new Map(); // Map of shop domain -> session
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({
@@ -166,20 +169,60 @@ app.listen(PORT, HOST, () => {
  */
 async function initializeScheduleProcessor() {
   try {
-    // For MVP, we'll create a placeholder processor
-    // In production, this would be initialized per shop with proper sessions
-    console.log('⏰ Schedule processor initialization placeholder');
-    console.log('Note: Processor will initialize when shops authenticate');
+    console.log('⏰ Initializing schedule processor...');
 
-    // Create a global processor instance (simplified for MVP)
-    // In production, use a proper job queue system like Bull or Agenda
-    global.scheduleProcessor = {
-      getStatus: () => ({ running: true, note: 'Placeholder for MVP' }),
-      triggerManually: async () => {
-        console.log('Manual trigger - would process schedules here');
-        return [];
-      },
+    // Create a multi-tenant scheduler that processes all shops
+    const multiTenantScheduler = {
+      async processPendingSchedules() {
+        const results = [];
+
+        // Get all active shops
+        if (!global.activeShops || global.activeShops.size === 0) {
+          // No active shops yet, silently return
+          return results;
+        }
+
+        console.log(`Processing schedules for ${global.activeShops.size} shop(s)`);
+
+        // Process each shop's schedules
+        for (const [shopDomain, session] of global.activeShops.entries()) {
+          try {
+            if (!session || !session.accessToken) {
+              console.log(`Skipping invalid session for shop: ${shopDomain}`);
+              continue;
+            }
+
+            // Initialize services for this shop
+            const graphqlClient = new ShopifyGraphQLClient(session);
+            const metafieldStorage = new MetafieldStorage(graphqlClient);
+            const themeModifier = new ThemeModifier(graphqlClient);
+            const scheduler = new Scheduler(graphqlClient, metafieldStorage, themeModifier);
+
+            // Process this shop's pending schedules
+            const shopResults = await scheduler.processPendingSchedules();
+
+            if (shopResults.length > 0) {
+              console.log(`Processed ${shopResults.length} schedule(s) for ${shopDomain}`);
+            }
+
+            results.push(...shopResults);
+
+          } catch (error) {
+            console.error(`Error processing shop ${shopDomain}:`, error);
+          }
+        }
+
+        return results;
+      }
     };
+
+    // Create and start the processor
+    const processor = new ScheduleProcessor(multiTenantScheduler);
+    processor.start();
+
+    global.scheduleProcessor = processor;
+
+    console.log('✓ Schedule processor started successfully');
   } catch (error) {
     console.error('Failed to initialize schedule processor:', error);
   }
