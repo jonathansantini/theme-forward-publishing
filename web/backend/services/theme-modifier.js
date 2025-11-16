@@ -206,14 +206,18 @@ export class ThemeModifier {
    */
   async getTemplateSections(themeId, templateName) {
     try {
-      const templateFile = await this.client.getThemeFile(
-        themeId,
-        `templates/${templateName}`
-      );
+      const fullPath = `templates/${templateName}`;
+      console.log('[getTemplateSections] Fetching file:', fullPath);
+
+      const templateFile = await this.client.getThemeFile(themeId, fullPath);
 
       if (!templateFile) {
+        console.error('[getTemplateSections] File not found:', fullPath);
         return null;
       }
+
+      console.log('[getTemplateSections] File found:', templateFile.filename);
+      console.log('[getTemplateSections] Content preview:', templateFile.body?.content?.substring(0, 100));
 
       const templateData = JSON.parse(templateFile.body.content);
 
