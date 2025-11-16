@@ -173,10 +173,11 @@ export class ShopifyGraphQLClient {
       try {
         console.log('[updateThemeFiles] Uploading:', file.filename);
         console.log('[updateThemeFiles] Asset key:', file.filename);
-        console.log('[updateThemeFiles] API path:', `themes/${numericThemeId}/assets.json`);
+        console.log('[updateThemeFiles] Content length:', file.body.value?.length || 0);
+        console.log('[updateThemeFiles] API path:', `themes/${numericThemeId}/assets`);
 
         const response = await this.restClient.put({
-          path: `themes/${numericThemeId}/assets.json`,
+          path: `themes/${numericThemeId}/assets`,
           data: {
             asset: {
               key: file.filename,
