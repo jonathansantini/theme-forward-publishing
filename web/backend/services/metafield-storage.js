@@ -15,16 +15,23 @@ export class MetafieldStorage {
    */
   async getSchedules() {
     try {
+      console.log('[getSchedules] Fetching metafield with namespace:', this.namespace, 'key:', 'schedules');
       const metafield = await this.client.getShopMetafield(this.namespace, 'schedules');
 
+      console.log('[getSchedules] Metafield result:', metafield ? 'found' : 'null');
+
       if (!metafield || !metafield.value) {
+        console.log('[getSchedules] No metafield or value found, returning empty array');
         return [];
       }
 
+      console.log('[getSchedules] Metafield value:', metafield.value);
       const data = JSON.parse(metafield.value);
+      console.log('[getSchedules] Parsed data:', data);
+      console.log('[getSchedules] Schedules count:', data.schedules?.length || 0);
       return data.schedules || [];
     } catch (error) {
-      console.error('Error getting schedules:', error);
+      console.error('[getSchedules] Error getting schedules:', error);
       return [];
     }
   }
@@ -104,7 +111,13 @@ export class MetafieldStorage {
    */
   async getPendingSchedules() {
     const schedules = await this.getSchedules();
-    return schedules.filter((s) => s.status === 'pending' || s.status === 'active');
+    console.log('[getPendingSchedules] Total schedules:', schedules.length);
+    schedules.forEach(s => {
+      console.log(`[getPendingSchedules] Schedule ${s.id}: status=${s.status}, executeAt=${s.executeAt}`);
+    });
+    const pending = schedules.filter((s) => s.status === 'pending' || s.status === 'active');
+    console.log('[getPendingSchedules] Pending/active schedules:', pending.length);
+    return pending;
   }
 
   /**
