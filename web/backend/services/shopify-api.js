@@ -26,6 +26,7 @@ export class ShopifyGraphQLClient {
   constructor(session) {
     this.session = session;
     this.client = new shopify.clients.Graphql({ session });
+    this.restClient = new shopify.clients.Rest({ session });
   }
 
   /**
@@ -155,32 +156,38 @@ export class ShopifyGraphQLClient {
   }
 
   /**
-   * Update theme files
+   * Update theme files using REST API
+   * (GraphQL themeFilesUpsert requires special Shopify exemption)
    */
   async updateThemeFiles(themeId, files) {
-    const mutation = `
-      mutation themeFilesUpsert($themeId: ID!, $files: [OnlineStoreThemeFilesUpsertFileInput!]!) {
-        themeFilesUpsert(themeId: $themeId, files: $files) {
-          upsertedThemeFiles {
-            filename
-          }
-          userErrors {
-            field
-            message
-          }
-        }
+    // Extract numeric ID from GID format: gid://shopify/OnlineStoreTheme/123456
+    const numericThemeId = themeId.split('/').pop();
+
+    const results = [];
+
+    for (const file of files) {
+      try {
+        const response = await this.restClient.put({
+          path: `themes/${numericThemeId}/assets`,
+          data: {
+            asset: {
+              key: file.filename,
+              value: file.body.value,
+            },
+          },
+        });
+
+        results.push({
+          filename: file.filename,
+          success: true,
+        });
+      } catch (error) {
+        console.error(`Failed to upload ${file.filename}:`, error);
+        throw new Error(`Theme file update failed for ${file.filename}: ${error.message}`);
       }
-    `;
-
-    const response = await this.query(mutation, { themeId, files });
-
-    if (response.data.themeFilesUpsert.userErrors.length > 0) {
-      throw new Error(
-        `Theme file update errors: ${JSON.stringify(response.data.themeFilesUpsert.userErrors)}`
-      );
     }
 
-    return response.data.themeFilesUpsert.upsertedThemeFiles;
+    return results;
   }
 
   /**
