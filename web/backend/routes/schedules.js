@@ -153,35 +153,13 @@ router.post('/:id/finalize', verifyAuth, async (req, res) => {
  */
 router.post('/:id/unpublish', verifyAuth, async (req, res) => {
   try {
-    const { storage, modifier } = initServices(req.shopifySession);
+    const { storage } = initServices(req.shopifySession);
 
-    // Get the schedule
-    const schedule = await storage.getSchedule(req.params.id);
-    if (!schedule) {
-      return res.status(404).json({ error: 'Schedule not found' });
-    }
-
-    console.log(`[Unpublish] Executing hide action for schedule ${req.params.id}`);
-    console.log(`[Unpublish] Theme: ${schedule.themeId}, Template: ${schedule.templateName}, Section: ${schedule.sectionId}`);
-
-    // Execute the hide action immediately
-    const result = await modifier.modifyTemplateVisibility(
-      schedule.themeId,
-      schedule.templateName,
-      schedule.sectionId,
-      'hide'
-    );
-
-    console.log(`[Unpublish] Hide action result:`, result);
-
-    // Update schedule status to indicate it's been executed
-    const updatedSchedule = await storage.updateSchedule(req.params.id, {
-      status: 'completed',
-      lastRun: new Date().toISOString(),
+    const schedule = await storage.updateSchedule(req.params.id, {
       finalized: false,
     });
 
-    res.json({ schedule: updatedSchedule, result });
+    res.json({ schedule });
   } catch (error) {
     console.error('Unpublish schedule error:', error);
     res.status(500).json({ error: error.message });
