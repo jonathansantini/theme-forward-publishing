@@ -163,10 +163,18 @@ export class ShopifyGraphQLClient {
     // Extract numeric ID from GID format: gid://shopify/OnlineStoreTheme/123456
     const numericThemeId = themeId.split('/').pop();
 
+    console.log('[updateThemeFiles] Theme GID:', themeId);
+    console.log('[updateThemeFiles] Numeric theme ID:', numericThemeId);
+    console.log('[updateThemeFiles] Files to upload:', files.length);
+
     const results = [];
 
     for (const file of files) {
       try {
+        console.log('[updateThemeFiles] Uploading:', file.filename);
+        console.log('[updateThemeFiles] Asset key:', file.filename);
+        console.log('[updateThemeFiles] API path:', `themes/${numericThemeId}/assets`);
+
         const response = await this.restClient.put({
           path: `themes/${numericThemeId}/assets`,
           data: {
@@ -177,12 +185,14 @@ export class ShopifyGraphQLClient {
           },
         });
 
+        console.log('[updateThemeFiles] Upload success:', file.filename);
         results.push({
           filename: file.filename,
           success: true,
         });
       } catch (error) {
-        console.error(`Failed to upload ${file.filename}:`, error);
+        console.error(`[updateThemeFiles] Failed to upload ${file.filename}:`, error.message);
+        console.error(`[updateThemeFiles] Error response:`, error.response);
         throw new Error(`Theme file update failed for ${file.filename}: ${error.message}`);
       }
     }
