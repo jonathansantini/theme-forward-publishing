@@ -111,9 +111,12 @@ export class MetafieldStorage {
    * Save schedules to metafield
    */
   async saveSchedules(schedules) {
+    // Get the actual shop GID
+    const shopInfo = await this.client.getShopInfo();
+
     const metafields = [
       {
-        ownerId: 'gid://shopify/Shop/1', // Shop ID will be determined at runtime
+        ownerId: shopInfo.id, // Use the actual shop GID
         namespace: this.namespace,
         key: 'schedules',
         type: 'json',
@@ -191,9 +194,12 @@ export class MetafieldStorage {
    * Save backups to metafield
    */
   async saveBackups(backups) {
+    // Get the actual shop GID
+    const shopInfo = await this.client.getShopInfo();
+
     const metafields = [
       {
-        ownerId: 'gid://shopify/Shop/1',
+        ownerId: shopInfo.id, // Use the actual shop GID
         namespace: this.namespace,
         key: 'backups',
         type: 'json',
@@ -233,9 +239,12 @@ export class MetafieldStorage {
     const originalSections = await this.getOriginalSections();
     originalSections[sectionId] = sectionData;
 
+    // Get the actual shop GID
+    const shopInfo = await this.client.getShopInfo();
+
     const metafields = [
       {
-        ownerId: 'gid://shopify/Shop/1',
+        ownerId: shopInfo.id, // Use the actual shop GID
         namespace: this.namespace,
         key: 'original_sections',
         type: 'json',
