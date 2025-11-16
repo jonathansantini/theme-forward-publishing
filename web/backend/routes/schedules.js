@@ -153,13 +153,46 @@ router.post('/:id/finalize', verifyAuth, async (req, res) => {
  */
 router.post('/:id/unpublish', verifyAuth, async (req, res) => {
   try {
-    const { storage } = initServices(req.shopifySession);
+    const { storage, modifier } = initServices(req.shopifySession);
 
-    const schedule = await storage.updateSchedule(req.params.id, {
+    // Get the schedule
+    const schedule = await storage.getSchedule(req.params.id);
+    if (!schedule) {
+      return res.status(404).json({ error: 'Schedule not found' });
+    }
+
+    let result = null;
+
+    // If the schedule has already been executed, revert the changes
+    if (schedule.status === 'completed' || schedule.lastRun) {
+      console.log(`[Unpublish] Reverting executed schedule ${req.params.id}`);
+      console.log(`[Unpublish] Original action was: ${schedule.action}`);
+
+      // Reverse the action: if we hid the section, show it. If we showed it, hide it.
+      const reverseAction = schedule.action === 'hide' ? 'show' : 'hide';
+
+      console.log(`[Unpublish] Executing reverse action: ${reverseAction}`);
+
+      result = await modifier.modifyTemplateVisibility(
+        schedule.themeId,
+        schedule.templateName,
+        schedule.sectionId,
+        reverseAction
+      );
+
+      console.log(`[Unpublish] Reverse action result:`, result);
+    } else {
+      // Schedule hasn't executed yet, just cancel it
+      console.log(`[Unpublish] Cancelling pending schedule ${req.params.id}`);
+    }
+
+    // Update schedule status
+    const updatedSchedule = await storage.updateSchedule(req.params.id, {
+      status: 'cancelled',
       finalized: false,
     });
 
-    res.json({ schedule });
+    res.json({ schedule: updatedSchedule, result });
   } catch (error) {
     console.error('Unpublish schedule error:', error);
     res.status(500).json({ error: error.message });
