@@ -296,9 +296,12 @@ export class MetafieldStorage {
     const originalSections = await this.getOriginalSections();
     delete originalSections[sectionId];
 
+    // Get the actual shop GID
+    const shopInfo = await this.client.getShopInfo();
+
     const metafields = [
       {
-        ownerId: 'gid://shopify/Shop/1',
+        ownerId: shopInfo.id, // Use the actual shop GID
         namespace: this.namespace,
         key: 'original_sections',
         type: 'json',
@@ -350,9 +353,12 @@ export class MetafieldStorage {
       logs.shift();
     }
 
+    // Get the actual shop GID
+    const shopInfo = await this.client.getShopInfo();
+
     const metafields = [
       {
-        ownerId: 'gid://shopify/Shop/1',
+        ownerId: shopInfo.id, // Use the actual shop GID
         namespace: this.namespace,
         key: 'execution_logs',
         type: 'json',
