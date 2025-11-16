@@ -129,10 +129,12 @@ export class ShopifyGraphQLClient {
    * Get a specific theme file content
    */
   async getThemeFile(themeId, filename) {
+    // Note: Shopify's GraphQL API doesn't support filtering by filename
+    // We need to fetch files and filter client-side
     const query = `
-      query getThemeFile($themeId: ID!, $filename: String!) {
+      query getThemeFile($themeId: ID!) {
         theme(id: $themeId) {
-          files(first: 1, after: null, filename: $filename) {
+          files(first: 500) {
             nodes {
               filename
               body {
@@ -146,9 +148,10 @@ export class ShopifyGraphQLClient {
       }
     `;
 
-    const response = await this.query(query, { themeId, filename });
+    const response = await this.query(query, { themeId });
     const files = response.data.theme.files.nodes;
-    return files.length > 0 ? files[0] : null;
+    const matchingFile = files.find(f => f.filename === filename);
+    return matchingFile || null;
   }
 
   /**
