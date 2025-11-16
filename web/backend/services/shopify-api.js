@@ -41,17 +41,21 @@ export class ShopifyGraphQLClient {
       });
 
       // Check for rate limiting
-      if (response.headers && response.headers.get('X-Shopify-Shop-Api-Call-Limit')) {
-        const [used, total] = response.headers
-          .get('X-Shopify-Shop-Api-Call-Limit')
-          .split('/');
+      if (response.headers) {
+        const rateLimitHeader = typeof response.headers.get === 'function'
+          ? response.headers.get('X-Shopify-Shop-Api-Call-Limit')
+          : response.headers['X-Shopify-Shop-Api-Call-Limit'];
 
-        console.log(`API Rate Limit: ${used}/${total}`);
+        if (rateLimitHeader) {
+          const [used, total] = rateLimitHeader.split('/');
 
-        // If we're close to the limit, wait before next request
-        if (parseInt(used) / parseInt(total) > 0.8) {
-          console.warn('Approaching rate limit, implementing delay...');
-          await this.sleep(1000);
+          console.log(`API Rate Limit: ${used}/${total}`);
+
+          // If we're close to the limit, wait before next request
+          if (parseInt(used) / parseInt(total) > 0.8) {
+            console.warn('Approaching rate limit, implementing delay...');
+            await this.sleep(1000);
+          }
         }
       }
 
