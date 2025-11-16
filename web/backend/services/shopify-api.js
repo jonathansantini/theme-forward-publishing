@@ -10,7 +10,7 @@ export const shopify = shopifyApi({
   apiSecretKey: process.env.SHOPIFY_API_SECRET,
   scopes: process.env.SCOPES?.split(',') || [],
   hostName: process.env.SHOPIFY_APP_URL?.replace(/https?:\/\//, '') || 'localhost:3000',
-  hostScheme: process.env.NODE_ENV === 'production' ? 'https' : 'http',
+  hostScheme: 'https', // Always use https for ngrok tunnels
   apiVersion: process.env.SHOPIFY_API_VERSION || LATEST_API_VERSION,
   isEmbeddedApp: true,
   logger: {
