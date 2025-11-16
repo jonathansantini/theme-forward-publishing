@@ -232,7 +232,23 @@ export class ThemeModifier {
    */
   async listTemplates(themeId) {
     try {
+      console.log('[listTemplates] Fetching theme files for:', themeId);
       const theme = await this.client.getThemeFiles(themeId);
+
+      console.log('[listTemplates] Theme data:', {
+        id: theme?.id,
+        name: theme?.name,
+        filesCount: theme?.files?.nodes?.length || 0
+      });
+
+      if (!theme || !theme.files || !theme.files.nodes) {
+        console.error('[listTemplates] Invalid theme data structure:', theme);
+        return [];
+      }
+
+      console.log('[listTemplates] First 5 filenames:',
+        theme.files.nodes.slice(0, 5).map(f => f.filename)
+      );
 
       const jsonTemplates = theme.files.nodes
         .filter(
@@ -245,6 +261,7 @@ export class ThemeModifier {
           fullPath: file.filename,
         }));
 
+      console.log('[listTemplates] Filtered JSON templates:', jsonTemplates.length);
       return jsonTemplates;
     } catch (error) {
       console.error('Error listing templates:', error);
