@@ -163,7 +163,6 @@ export class ShopifyGraphQLClient {
         themeFilesUpsert(themeId: $themeId, files: $files) {
           upsertedThemeFiles {
             filename
-            success
           }
           userErrors {
             field
