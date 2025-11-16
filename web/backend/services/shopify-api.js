@@ -163,11 +163,7 @@ export class ShopifyGraphQLClient {
         themeFilesUpsert(themeId: $themeId, files: $files) {
           upsertedThemeFiles {
             filename
-            body {
-              ... on OnlineStoreThemeFileBodyText {
-                content
-              }
-            }
+            success
           }
           userErrors {
             field
