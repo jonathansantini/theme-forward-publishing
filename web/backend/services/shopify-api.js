@@ -175,9 +175,9 @@ export class ShopifyGraphQLClient {
         console.log('[updateThemeFiles] Asset key:', file.filename);
         console.log('[updateThemeFiles] Content length:', file.body.value?.length || 0);
 
-        // Use API version 2023-01 - newer versions (2023-04+) have broken PUT endpoint for theme assets
+        // Try API version 2022-10 - the oldest version reported to work
         // See: https://github.com/Shopify/shopify-api-js/issues/946
-        const apiVersion = '2023-01';
+        const apiVersion = '2022-10';
 
         // First, verify we can GET the asset to ensure it exists
         const getUrl = `https://${this.session.shop}/admin/api/${apiVersion}/themes/${numericThemeId}/assets.json?asset[key]=${encodeURIComponent(file.filename)}`;
