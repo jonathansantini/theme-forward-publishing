@@ -1,6 +1,7 @@
 /**
- * Theme Modifier Service
- * Handles modification of theme JSON templates to show/hide sections
+ * Theme Modifier Service (App Extension Version)
+ * Manages section visibility via shop metafields instead of direct theme file modification.
+ * The theme app extension reads these metafields and applies CSS to hide sections.
  */
 export class ThemeModifier {
   constructor(graphqlClient, metafieldStorage) {
@@ -10,54 +11,43 @@ export class ThemeModifier {
 
   /**
    * Main function to modify section visibility
+   * Now updates metafields instead of modifying theme files
    */
   async modifyTemplateVisibility(themeId, templateName, sectionId, action) {
     console.log(
-      `Modifying template ${templateName}: ${action} section ${sectionId}`
+      `[ThemeModifier] ${action} section ${sectionId} in ${templateName}`
     );
 
     try {
-      // 1. Fetch current template JSON
-      const templateFile = await this.client.getThemeFile(
-        themeId,
-        `templates/${templateName}`
-      );
+      // Get current list of hidden sections
+      const hiddenSections = await this.getHiddenSections();
 
-      if (!templateFile) {
-        throw new Error(`Template ${templateName} not found`);
-      }
-
-      // Strip comments before parsing JSON
-      const cleanedContent = this.stripJsonComments(templateFile.body.content);
-      const templateData = JSON.parse(cleanedContent);
-
-      // 2. Create backup before modification
-      await this.createBackup(themeId, templateName, templateFile.body.content);
-
-      // 3. Modify sections object based on action
+      // Update the list based on action
+      let updatedSections;
       if (action === 'hide') {
-        await this.hideSection(templateData, sectionId);
+        updatedSections = await this.hideSection(sectionId, hiddenSections);
       } else if (action === 'show') {
-        await this.showSection(templateData, sectionId);
+        updatedSections = await this.showSection(sectionId, hiddenSections);
       } else {
         throw new Error(`Invalid action: ${action}`);
       }
 
-      // 4. Upload modified template
-      const updatedContent = JSON.stringify(templateData, null, 2);
-      await this.uploadTemplate(themeId, templateName, updatedContent);
+      // Save updated list to shop metafield
+      await this.updateHiddenSectionsMetafield(updatedSections);
 
-      // 5. Log the modification
+      // Log the modification
       await this.logModification(themeId, templateName, sectionId, action, true);
 
-      console.log(`Successfully ${action} section ${sectionId} in ${templateName}`);
+      console.log(`[ThemeModifier] Successfully ${action} section ${sectionId}`);
+      console.log(`[ThemeModifier] Currently hidden sections:`, updatedSections);
 
       return {
         success: true,
         message: `Section ${sectionId} ${action === 'hide' ? 'hidden' : 'shown'} successfully`,
+        hiddenSections: updatedSections,
       };
     } catch (error) {
-      console.error('Template modification error:', error);
+      console.error('[ThemeModifier] Error:', error);
 
       // Log the failed modification
       await this.logModification(
@@ -74,123 +64,107 @@ export class ThemeModifier {
   }
 
   /**
-   * Hide a section from the template
+   * Get current list of hidden sections from shop metafield
    */
-  async hideSection(templateData, sectionId) {
-    // Check if section exists
-    if (!templateData.sections || !templateData.sections[sectionId]) {
-      throw new Error(`Section ${sectionId} not found in template`);
+  async getHiddenSections() {
+    try {
+      const shopInfo = await this.client.getShopInfo();
+
+      const query = `
+        query getHiddenSections($ownerId: ID!) {
+          node(id: $ownerId) {
+            ... on Shop {
+              metafield(namespace: "app_scheduler", key: "hidden_sections") {
+                value
+              }
+            }
+          }
+        }
+      `;
+
+      const response = await this.client.query(query, {
+        ownerId: shopInfo.id,
+      });
+
+      const metafieldValue = response?.data?.node?.metafield?.value;
+
+      if (!metafieldValue) {
+        console.log('[ThemeModifier] No hidden sections metafield found, returning empty array');
+        return [];
+      }
+
+      const parsed = JSON.parse(metafieldValue);
+      console.log('[ThemeModifier] Current hidden sections:', parsed);
+      return parsed;
+    } catch (error) {
+      console.error('[ThemeModifier] Error getting hidden sections:', error);
+      return [];
     }
-
-    // Store original section data for restore
-    const originalSection = templateData.sections[sectionId];
-    await this.storage.storeOriginalSection(sectionId, {
-      data: originalSection,
-      order: templateData.order ? templateData.order.indexOf(sectionId) : -1,
-    });
-
-    // Remove from sections object
-    delete templateData.sections[sectionId];
-
-    // Remove from order array if it exists
-    if (templateData.order && Array.isArray(templateData.order)) {
-      templateData.order = templateData.order.filter((id) => id !== sectionId);
-    }
-
-    return templateData;
   }
 
   /**
-   * Show a section in the template
+   * Hide a section by adding it to the hidden sections list
    */
-  async showSection(templateData, sectionId) {
-    // Retrieve original section data
-    const originalSectionData = await this.storage.getOriginalSection(sectionId);
-
-    if (!originalSectionData) {
-      throw new Error(
-        `Cannot restore section ${sectionId}: original data not found`
-      );
+  async hideSection(sectionId, currentHiddenSections) {
+    // Don't add if already hidden
+    if (currentHiddenSections.includes(sectionId)) {
+      console.log(`[ThemeModifier] Section ${sectionId} is already hidden`);
+      return currentHiddenSections;
     }
 
-    // Restore section to sections object
-    if (!templateData.sections) {
-      templateData.sections = {};
-    }
+    const updated = [...currentHiddenSections, sectionId];
+    console.log(`[ThemeModifier] Adding ${sectionId} to hidden sections`);
+    return updated;
+  }
 
-    templateData.sections[sectionId] = originalSectionData.data;
+  /**
+   * Show a section by removing it from the hidden sections list
+   */
+  async showSection(sectionId, currentHiddenSections) {
+    // Filter out the section ID
+    const updated = currentHiddenSections.filter(id => id !== sectionId);
 
-    // Restore to order array at original position
-    if (!templateData.order) {
-      templateData.order = [];
-    }
-
-    if (
-      originalSectionData.order !== -1 &&
-      originalSectionData.order < templateData.order.length
-    ) {
-      // Insert at original position
-      templateData.order.splice(originalSectionData.order, 0, sectionId);
+    if (updated.length === currentHiddenSections.length) {
+      console.log(`[ThemeModifier] Section ${sectionId} was not hidden`);
     } else {
-      // Append to end if original position not valid
-      templateData.order.push(sectionId);
+      console.log(`[ThemeModifier] Removing ${sectionId} from hidden sections`);
     }
 
-    // Remove from original sections storage
-    await this.storage.removeOriginalSection(sectionId);
-
-    return templateData;
+    return updated;
   }
 
   /**
-   * Create a backup of the template
+   * Update the shop metafield with the list of hidden sections
+   * The theme app extension reads this to apply CSS
    */
-  async createBackup(themeId, templateName, content, scheduleId = null) {
-    return await this.storage.createBackup({
-      themeId,
-      templateName,
-      content,
-      scheduleId,
-    });
-  }
+  async updateHiddenSectionsMetafield(hiddenSections) {
+    try {
+      const shopInfo = await this.client.getShopInfo();
 
-  /**
-   * Restore template from backup
-   */
-  async restoreFromBackup(backupId) {
-    const backup = await this.storage.getBackup(backupId);
-
-    if (!backup) {
-      throw new Error(`Backup ${backupId} not found`);
-    }
-
-    await this.uploadTemplate(backup.themeId, backup.templateName, backup.content);
-
-    return {
-      success: true,
-      message: `Template ${backup.templateName} restored from backup`,
-    };
-  }
-
-  /**
-   * Upload modified template to Shopify
-   */
-  async uploadTemplate(themeId, templateName, content) {
-    const files = [
-      {
-        filename: `templates/${templateName}`,
-        body: {
-          type: 'TEXT',
-          value: content,
+      const metafields = [
+        {
+          ownerId: shopInfo.id,
+          namespace: 'app_scheduler',
+          key: 'hidden_sections',
+          type: 'json',
+          value: JSON.stringify(hiddenSections),
         },
-      },
-    ];
+      ];
 
-    return await this.client.updateThemeFiles(themeId, files);
+      console.log('[ThemeModifier] Updating hidden_sections metafield:', hiddenSections);
+
+      const result = await this.client.setShopMetafields(metafields);
+      console.log('[ThemeModifier] Metafield update result:', result);
+
+      return result;
+    } catch (error) {
+      console.error('[ThemeModifier] Error updating metafield:', error);
+      throw error;
+    }
   }
 
   /**
-   * Log modification to metafield
+   * Log modification to metafield (for audit trail)
    */
   async logModification(themeId, templateName, sectionId, action, success, error = null) {
     return await this.storage.logExecution({
@@ -204,19 +178,7 @@ export class ThemeModifier {
   }
 
   /**
-   * Strip C-style comments from JSON string
-   * Shopify theme files may contain comments which are not valid JSON
-   */
-  stripJsonComments(jsonString) {
-    // Remove /* ... */ style comments
-    let result = jsonString.replace(/\/\*[\s\S]*?\*\//g, '');
-    // Remove // style comments (but be careful not to remove URLs)
-    result = result.replace(/^\s*\/\/.*$/gm, '');
-    return result.trim();
-  }
-
-  /**
-   * Get all sections from a template
+   * Get all sections from a template (still useful for UI)
    */
   async getTemplateSections(themeId, templateName) {
     try {
@@ -231,12 +193,9 @@ export class ThemeModifier {
       }
 
       console.log('[getTemplateSections] File found:', templateFile.filename);
-      console.log('[getTemplateSections] Content preview:', templateFile.body?.content?.substring(0, 100));
 
       // Strip comments before parsing
       const cleanedContent = this.stripJsonComments(templateFile.body.content);
-      console.log('[getTemplateSections] After stripping comments:', cleanedContent.substring(0, 100));
-
       const templateData = JSON.parse(cleanedContent);
 
       return {
@@ -267,10 +226,6 @@ export class ThemeModifier {
         console.error('[listTemplates] Invalid theme data structure:', theme);
         return [];
       }
-
-      console.log('[listTemplates] First 5 filenames:',
-        theme.files.nodes.slice(0, 5).map(f => f.filename)
-      );
 
       const jsonTemplates = theme.files.nodes
         .filter(
@@ -306,6 +261,18 @@ export class ThemeModifier {
     }
 
     return { valid: true };
+  }
+
+  /**
+   * Strip C-style comments from JSON string
+   * Shopify theme files may contain comments which are not valid JSON
+   */
+  stripJsonComments(jsonString) {
+    // Remove /* ... */ style comments
+    let result = jsonString.replace(/\/\*[\s\S]*?\*\//g, '');
+    // Remove // style comments (but be careful not to remove URLs)
+    result = result.replace(/^\s*\/\/.*$/gm, '');
+    return result.trim();
   }
 }
 

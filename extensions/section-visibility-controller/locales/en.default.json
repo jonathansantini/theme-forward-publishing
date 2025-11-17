@@ -1,0 +1,8 @@
+{
+  "name": "Section Scheduler",
+  "blocks": {
+    "app": {
+      "name": "Section Visibility Controller"
+    }
+  }
+}

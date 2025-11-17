@@ -1,0 +1,39 @@
+{% comment %}
+  Section Scheduler - Visibility Controller
+
+  This app block reads the scheduled section visibility from shop metafields
+  and applies CSS to hide sections that should not be visible at the current time.
+
+  Processing happens server-side (Liquid) before HTML is sent to browser,
+  so there's no flicker or flash of content.
+{% endcomment %}
+
+{% comment %} Read the hidden sections metafield {% endcomment %}
+{% assign hidden_sections_json = shop.metafields.app_scheduler.hidden_sections.value %}
+
+{% if hidden_sections_json != blank %}
+  {% comment %} Parse the JSON array of section IDs to hide {% endcomment %}
+  {% assign hidden_sections = hidden_sections_json | parse_json %}
+
+  {% if hidden_sections.size > 0 %}
+    <style>
+      {% comment %}
+        Hide each section using its Shopify-generated ID
+        Format: #shopify-section-{section-id}
+        Using !important to override theme styles
+      {% endcomment %}
+      {% for section_id in hidden_sections %}
+        #shopify-section-{{ section_id }} {
+          display: none !important;
+        }
+      {% endfor %}
+    </style>
+
+    {% comment %} Debug info - only visible in theme preview mode {% endcomment %}
+    {% if request.design_mode %}
+      <script>
+        console.log('[Section Scheduler] Hiding {{ hidden_sections.size }} section(s):', {{ hidden_sections | json }});
+      </script>
+    {% endif %}
+  {% endif %}
+{% endif %}
