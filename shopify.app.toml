@@ -9,7 +9,7 @@ automatically_update_urls_on_dev = true
 dev_store_url = "" # Your development store URL
 
 [access_scopes]
-scopes = "write_themes,read_themes,write_content,read_content,write_script_tags"
+scopes = "write_themes,read_themes,write_content,read_content"
 
 [auth]
 redirect_urls = [

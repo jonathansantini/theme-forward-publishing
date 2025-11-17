@@ -15,7 +15,6 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 import authRoutes from './routes/auth.js';
 import schedulesRoutes from './routes/schedules.js';
 import themesRoutes from './routes/themes.js';
-import hiddenSectionsRoutes from './routes/hidden-sections.js';
 
 // Load environment variables
 dotenv.config();
@@ -52,16 +51,12 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Serve public files (script-tag.js)
-app.use(express.static('web/backend/public'));
-
 // Auth routes
 app.use('/', authRoutes);
 
 // API routes
 app.use('/api/schedules', schedulesRoutes);
 app.use('/api/themes', themesRoutes);
-app.use('/api', hiddenSectionsRoutes);
 
 // Shop info endpoint
 app.get('/api/shop', async (req, res) => {
