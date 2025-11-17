@@ -200,7 +200,17 @@ export class ShopifyGraphQLClient {
 
         // Now try to PUT the updated asset
         const putUrl = `https://${this.session.shop}/admin/api/2025-01/themes/${numericThemeId}/assets.json`;
+        const putBody = {
+          asset: {
+            key: file.filename,
+            value: file.body.value,
+          },
+        };
+
         console.log('[updateThemeFiles] PUT URL:', putUrl);
+        console.log('[updateThemeFiles] PUT body keys:', Object.keys(putBody.asset));
+        console.log('[updateThemeFiles] PUT asset.key:', putBody.asset.key);
+        console.log('[updateThemeFiles] PUT asset.value length:', putBody.asset.value?.length);
 
         const response = await fetch(putUrl, {
           method: 'PUT',
@@ -208,15 +218,11 @@ export class ShopifyGraphQLClient {
             'Content-Type': 'application/json',
             'X-Shopify-Access-Token': this.session.accessToken,
           },
-          body: JSON.stringify({
-            asset: {
-              key: file.filename,
-              value: file.body.value,
-            },
-          }),
+          body: JSON.stringify(putBody),
         });
 
         console.log('[updateThemeFiles] PUT Response status:', response.status, response.statusText);
+        console.log('[updateThemeFiles] PUT Response headers:', Object.fromEntries(response.headers.entries()));
 
         if (!response.ok) {
           const errorText = await response.text();
