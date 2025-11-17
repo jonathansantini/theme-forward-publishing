@@ -175,11 +175,34 @@ export class ShopifyGraphQLClient {
         console.log('[updateThemeFiles] Asset key:', file.filename);
         console.log('[updateThemeFiles] Content length:', file.body.value?.length || 0);
 
-        // Use direct fetch instead of REST client for better control
-        const url = `https://${this.session.shop}/admin/api/2025-01/themes/${numericThemeId}/assets.json`;
-        console.log('[updateThemeFiles] Full URL:', url);
+        // First, verify we can GET the asset to ensure it exists
+        const getUrl = `https://${this.session.shop}/admin/api/2025-01/themes/${numericThemeId}/assets.json?asset[key]=${encodeURIComponent(file.filename)}`;
+        console.log('[updateThemeFiles] Testing GET first:', getUrl);
 
-        const response = await fetch(url, {
+        const getResponse = await fetch(getUrl, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Shopify-Access-Token': this.session.accessToken,
+          },
+        });
+
+        console.log('[updateThemeFiles] GET Response status:', getResponse.status, getResponse.statusText);
+
+        if (!getResponse.ok) {
+          const getErrorText = await getResponse.text();
+          console.error('[updateThemeFiles] GET failed:', getErrorText);
+          throw new Error(`Cannot access asset (GET failed with ${getResponse.status}): ${getErrorText}`);
+        }
+
+        const getAsset = await getResponse.json();
+        console.log('[updateThemeFiles] Asset exists, current size:', getAsset?.asset?.value?.length || 0);
+
+        // Now try to PUT the updated asset
+        const putUrl = `https://${this.session.shop}/admin/api/2025-01/themes/${numericThemeId}/assets.json`;
+        console.log('[updateThemeFiles] PUT URL:', putUrl);
+
+        const response = await fetch(putUrl, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -193,17 +216,16 @@ export class ShopifyGraphQLClient {
           }),
         });
 
-        console.log('[updateThemeFiles] Response status:', response.status, response.statusText);
+        console.log('[updateThemeFiles] PUT Response status:', response.status, response.statusText);
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.error('[updateThemeFiles] Error response body:', errorText);
+          console.error('[updateThemeFiles] PUT Error response body:', errorText);
           throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
 
         const data = await response.json();
         console.log('[updateThemeFiles] Upload success:', file.filename);
-        console.log('[updateThemeFiles] Response data:', data);
 
         results.push({
           filename: file.filename,
