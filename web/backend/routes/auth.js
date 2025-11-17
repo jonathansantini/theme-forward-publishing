@@ -1,5 +1,6 @@
 import express from 'express';
-import { shopify } from '../services/shopify-api.js';
+import { shopify, ShopifyGraphQLClient } from '../services/shopify-api.js';
+import { ScriptTagManager } from '../services/script-tag-manager.js';
 
 const router = express.Router();
 
@@ -47,6 +48,17 @@ router.get('/auth/callback', async (req, res) => {
     if (global.activeShops) {
       global.activeShops.set(session.shop, session);
       console.log(`Added ${session.shop} to active shops for schedule processing`);
+    }
+
+    // Install script tag for section visibility control
+    try {
+      const graphqlClient = new ShopifyGraphQLClient(session);
+      const scriptTagManager = new ScriptTagManager(graphqlClient);
+      await scriptTagManager.install(session.shop);
+      console.log(`✓ Script tag installed for ${session.shop}`);
+    } catch (error) {
+      // Don't fail the whole auth flow if script tag installation fails
+      console.error(`Failed to install script tag for ${session.shop}:`, error.message);
     }
 
     const host = req.query.host;
