@@ -175,9 +175,13 @@ export class ShopifyGraphQLClient {
         console.log('[updateThemeFiles] Asset key:', file.filename);
         console.log('[updateThemeFiles] Content length:', file.body.value?.length || 0);
 
+        // Try with API version 2024-10 instead of 2025-01 (in case there are version-specific issues)
+        const apiVersion = '2024-10';
+
         // First, verify we can GET the asset to ensure it exists
-        const getUrl = `https://${this.session.shop}/admin/api/2025-01/themes/${numericThemeId}/assets.json?asset[key]=${encodeURIComponent(file.filename)}`;
+        const getUrl = `https://${this.session.shop}/admin/api/${apiVersion}/themes/${numericThemeId}/assets.json?asset[key]=${encodeURIComponent(file.filename)}`;
         console.log('[updateThemeFiles] Testing GET first:', getUrl);
+        console.log('[updateThemeFiles] API Version:', apiVersion);
 
         const getResponse = await fetch(getUrl, {
           method: 'GET',
@@ -199,7 +203,7 @@ export class ShopifyGraphQLClient {
         console.log('[updateThemeFiles] Asset exists, current size:', getAsset?.asset?.value?.length || 0);
 
         // Now try to PUT the updated asset
-        const putUrl = `https://${this.session.shop}/admin/api/2025-01/themes/${numericThemeId}/assets.json`;
+        const putUrl = `https://${this.session.shop}/admin/api/${apiVersion}/themes/${numericThemeId}/assets.json`;
         const putBody = {
           asset: {
             key: file.filename,
