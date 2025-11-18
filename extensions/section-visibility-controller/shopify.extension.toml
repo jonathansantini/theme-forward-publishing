@@ -1,7 +1,2 @@
 type = "theme"
 name = "Section Visibility Controller"
-
-[extensions.settings]
-[[extensions.settings.blocks]]
-type = "app"
-name = "Section Scheduler"
