@@ -1,47 +1,72 @@
 {% comment %}
   Section Scheduler - Visibility Controller
 
-  This app block reads the scheduled section visibility from shop metafields
-  and applies CSS to hide sections that should not be visible at the current time.
+  This app block loads dynamic JavaScript from the app proxy that removes
+  scheduled sections from the DOM before they render.
 
-  Processing happens server-side (Liquid) before HTML is sent to browser,
-  so there's no flicker or flash of content.
+  The app proxy endpoint (/apps/scheduler/visibility.js) returns JavaScript
+  that reads which sections should be hidden from the backend and removes them.
+
+  Benefits:
+  - Sections removed from DOM entirely (not just CSS hidden)
+  - No Shopify Liquid metafield access limitations
+  - Backend has full control via GraphQL API
+  - Can switch between JS removal and CSS hiding via query param
+
+  Modes:
+  - Default (?mode=js): JavaScript removes sections from DOM
+  - Fallback (?mode=css): CSS hides sections with display:none
 {% endcomment %}
 
-{% comment %} Read the hidden sections metafield {% endcomment %}
-{% assign hidden_sections_json = shop.metafields.app_scheduler.hidden_sections.value %}
+{% comment %}
+  Load the visibility controller script from app proxy
+  App proxy configuration maps:
+    Store URL: /apps/scheduler/visibility.js
+    Backend:   /proxy/visibility.js
+{% endcomment %}
 
-{% if hidden_sections_json != blank %}
-  {% comment %} Parse the JSON array of section IDs to hide {% endcomment %}
-  {% assign hidden_sections = hidden_sections_json | parse_json %}
+{% comment %} Get mode from block settings (defaults to 'js') {% endcomment %}
+{% assign visibility_mode = block.settings.mode | default: 'js' %}
 
-  {% if hidden_sections.size > 0 %}
-    <style>
-      {% comment %}
-        Hide each section using its Shopify-generated ID
-        Format: #shopify-section-{section-id}
-        Using !important to override theme styles
-      {% endcomment %}
-      {% for section_id in hidden_sections %}
-        #shopify-section-{{ section_id }} {
-          display: none !important;
-        }
-      {% endfor %}
-    </style>
+{% comment %} Load script/css based on mode {% endcomment %}
+{% if visibility_mode == 'css' %}
+  {%- comment -%} CSS mode: Load as stylesheet {%- endcomment -%}
+  <link rel="stylesheet" href="/apps/scheduler/visibility.js?mode=css">
+{% else %}
+  {%- comment -%} JS mode (default): Load as inline script {%- endcomment -%}
+  <script src="/apps/scheduler/visibility.js?mode=js"></script>
+{% endif %}
 
-    {% comment %} Debug info - only visible in theme preview mode {% endcomment %}
-    {% if request.design_mode %}
-      <script>
-        console.log('[Section Scheduler] Hiding {{ hidden_sections.size }} section(s):', {{ hidden_sections | json }});
-      </script>
-    {% endif %}
-  {% endif %}
+{% comment %} Debug info - only visible in theme preview mode {% endcomment %}
+{% if request.design_mode %}
+  <script>
+    console.log('[Section Scheduler] Visibility mode: {{ visibility_mode }}');
+    console.log('[Section Scheduler] Loading from app proxy: /apps/scheduler/visibility.js?mode={{ visibility_mode }}');
+  </script>
 {% endif %}
 
 {% schema %}
 {
   "name": "Section Scheduler",
   "target": "head",
-  "settings": []
+  "settings": [
+    {
+      "type": "select",
+      "id": "mode",
+      "label": "Visibility Mode",
+      "options": [
+        {
+          "value": "js",
+          "label": "JavaScript (removes from DOM)"
+        },
+        {
+          "value": "css",
+          "label": "CSS (display:none)"
+        }
+      ],
+      "default": "js",
+      "info": "JavaScript mode removes sections from DOM entirely. CSS mode hides them with display:none (fallback option)."
+    }
+  ]
 }
 {% endschema %}

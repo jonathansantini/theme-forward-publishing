@@ -15,6 +15,7 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 import authRoutes from './routes/auth.js';
 import schedulesRoutes from './routes/schedules.js';
 import themesRoutes from './routes/themes.js';
+import proxyRoutes from './routes/proxy.js';
 
 // Load environment variables
 dotenv.config();
@@ -53,6 +54,9 @@ app.get('/health', (req, res) => {
 
 // Auth routes
 app.use('/', authRoutes);
+
+// App Proxy routes (Shopify forwards /apps/scheduler/* to /proxy/*)
+app.use('/proxy', proxyRoutes);
 
 // API routes
 app.use('/api/schedules', schedulesRoutes);

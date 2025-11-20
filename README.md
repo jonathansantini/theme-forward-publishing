@@ -1,6 +1,6 @@
 # Shopify Section Scheduler
 
-A Shopify app that allows merchants to schedule the visibility of theme sections at specific times with recurring schedule support. The app modifies JSON template files directly to show/hide sections based on merchant-defined schedules.
+A Shopify app that allows merchants to schedule the visibility of theme sections at specific times with recurring schedule support. The app uses a **Theme App Extension** and **App Proxy** to dynamically show/hide sections without modifying theme files directly.
 
 ## Features
 
@@ -96,6 +96,11 @@ PORT=3000
   - `https://your-ngrok-url.ngrok.io/auth/callback`
   - `https://your-ngrok-url.ngrok.io/auth/shopify/callback`
 - Enable required scopes: `write_themes`, `read_themes`, `write_content`, `read_content`
+- **Configure App Proxy** (Required):
+  - Subpath prefix: `apps`
+  - Subpath: `scheduler`
+  - Proxy URL: `https://your-ngrok-url.ngrok.io/proxy`
+  - See [APP_PROXY_SETUP.md](./APP_PROXY_SETUP.md) for detailed instructions
 
 5. **Start development server**
 
@@ -140,14 +145,20 @@ This starts both the backend (port 3000) and frontend (port 5173) in development
 
 ## How It Works
 
-### Theme Modification Process
+### Section Visibility Control (App Proxy Method)
 
-1. **Fetch Template**: Retrieve current JSON template from Shopify
-2. **Create Backup**: Store complete template in metafield
-3. **Modify Sections**: Add/remove section from template JSON
-4. **Store Original**: Save original section data for restoration
-5. **Upload Template**: Push modified template back to Shopify
-6. **Log Change**: Record execution in audit log
+1. **Schedule Execution**: Background job checks for pending schedules every minute
+2. **Update Metafield**: When a schedule triggers, update the `hidden_sections` metafield
+3. **App Proxy Request**: Theme app block loads script from `/apps/scheduler/visibility.js`
+4. **Backend Response**: App proxy endpoint reads metafield and returns JavaScript/CSS
+5. **DOM Manipulation**: JavaScript removes hidden sections from DOM before they render
+6. **Audit Log**: Record execution in metafield storage
+
+**Key Benefits:**
+- ✅ No theme file modifications (safer, Shopify-recommended approach)
+- ✅ Sections removed from DOM entirely (JavaScript mode) or hidden with CSS
+- ✅ Works within Shopify's official APIs and guidelines
+- ✅ No special API exemptions required
 
 ### Recurring Schedule Logic
 
@@ -184,6 +195,12 @@ For recurring schedules, the system:
 - `GET /api/themes/:themeId/templates/:templateName/sections` - Get sections
 - `POST /api/themes/:themeId/validate-section` - Validate section exists
 
+### App Proxy (Public Endpoints)
+
+- `GET /proxy/visibility.js?mode=js` - Returns JavaScript to remove hidden sections
+- `GET /proxy/visibility.js?mode=css` - Returns CSS to hide sections
+- `GET /proxy/health` - Proxy health check
+
 ### System
 
 - `GET /health` - Health check
@@ -219,6 +236,7 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed Heroku deployment instructions
 
 ## Documentation
 
+- **[APP_PROXY_SETUP.md](./APP_PROXY_SETUP.md)** - **Required:** App proxy configuration guide
 - [METAFIELD_SCHEMA.md](./METAFIELD_SCHEMA.md) - Metafield structure and migration guide
 - [API_REFERENCE.md](./API_REFERENCE.md) - GraphQL queries and mutations
 - [DEPLOYMENT.md](./DEPLOYMENT.md) - Deployment instructions
