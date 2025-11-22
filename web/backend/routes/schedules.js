@@ -55,6 +55,8 @@ router.get('/:id', verifyAuth, async (req, res) => {
 
 /**
  * POST /api/schedules - Create a new schedule
+ * Note: Schedules are always created in draft (finalized=false) state
+ * Must explicitly call /finalize to activate forward publishing
  */
 router.post('/', verifyAuth, async (req, res) => {
   try {
@@ -83,8 +85,17 @@ router.post('/', verifyAuth, async (req, res) => {
       });
     }
 
+    // IMPORTANT: Always create schedules as drafts (finalized=false)
+    // This prevents forward publishing from happening until user explicitly finalizes
+    const scheduleData = {
+      ...req.body,
+      finalized: false, // Force draft state
+    };
+
+    console.log(`[Create] Creating schedule in draft state (finalized=false)`);
+
     // Create schedule
-    const schedule = await storage.createSchedule(req.body);
+    const schedule = await storage.createSchedule(scheduleData);
 
     res.status(201).json({ schedule });
   } catch (error) {
