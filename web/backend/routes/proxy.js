@@ -164,10 +164,34 @@ function generateJavaScript(hiddenSections) {
   function removeSections() {
     var removed = 0;
     hiddenSections.forEach(function(sectionId) {
-      var sectionElement = document.getElementById('shopify-section-' + sectionId);
-      if (sectionElement) {
-        sectionElement.remove();
-        removed++;
+      // Try multiple ID patterns that Shopify uses for sections
+      var selectors = [
+        'shopify-section-' + sectionId,  // Standard pattern
+        'Banner-template--' + sectionId,  // Some themes use Banner prefix
+      ];
+
+      // Also try to find by attribute selector (ends with section ID)
+      var elements = document.querySelectorAll('[id*="__' + sectionId + '"]');
+
+      var found = false;
+
+      // Try direct ID selectors first
+      for (var i = 0; i < selectors.length; i++) {
+        var element = document.getElementById(selectors[i]);
+        if (element) {
+          element.remove();
+          removed++;
+          found = true;
+          break;
+        }
+      }
+
+      // If not found, try querySelectorAll results
+      if (!found && elements.length > 0) {
+        elements.forEach(function(el) {
+          el.remove();
+          removed++;
+        });
       }
     });
 
