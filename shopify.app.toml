@@ -19,3 +19,8 @@ redirect_urls = [
   "https://17f123a4c9a3.ngrok-free.app/auth/callback",
   "https://17f123a4c9a3.ngrok-free.app/auth/shopify/callback"
 ]
+
+[app_proxy]
+url = "https://17f123a4c9a3.ngrok-free.app/proxy"
+subpath = "scheduler"
+prefix = "apps"
