@@ -132,16 +132,48 @@ router.delete('/:id', verifyAuth, async (req, res) => {
 
 /**
  * POST /api/schedules/:id/finalize - Finalize a schedule (lock it)
+ * For 'show' schedules: implements forward publishing by immediately hiding the section
  */
 router.post('/:id/finalize', verifyAuth, async (req, res) => {
   try {
-    const { storage } = initServices(req.shopifySession);
+    const { storage, modifier } = initServices(req.shopifySession);
 
-    const schedule = await storage.updateSchedule(req.params.id, {
+    // Get the schedule details first
+    const schedule = await storage.getSchedule(req.params.id);
+    if (!schedule) {
+      return res.status(404).json({ error: 'Schedule not found' });
+    }
+
+    // Forward Publishing: If action is 'show', immediately hide the section
+    // It will be shown when the schedule executes at the scheduled time
+    if (schedule.action === 'show') {
+      console.log(`[Finalize] Forward publishing: hiding section ${schedule.sectionId} until scheduled show time`);
+
+      try {
+        // Immediately hide the section by adding it to hidden_sections metafield
+        const hiddenSections = await modifier.getHiddenSections();
+        const updatedSections = await modifier.hideSection(schedule.sectionId, hiddenSections);
+        await modifier.updateHiddenSectionsMetafield(updatedSections);
+
+        console.log(`[Finalize] Section ${schedule.sectionId} hidden successfully`);
+      } catch (hideError) {
+        console.error('[Finalize] Error hiding section for forward publishing:', hideError);
+        return res.status(500).json({
+          error: 'Failed to hide section for forward publishing',
+          details: hideError.message
+        });
+      }
+    }
+
+    // Now finalize the schedule
+    const updatedSchedule = await storage.updateSchedule(req.params.id, {
       finalized: true,
     });
 
-    res.json({ schedule });
+    res.json({
+      schedule: updatedSchedule,
+      forwardPublished: schedule.action === 'show'
+    });
   } catch (error) {
     console.error('Finalize schedule error:', error);
     res.status(500).json({ error: error.message });
@@ -182,8 +214,26 @@ router.post('/:id/unpublish', verifyAuth, async (req, res) => {
 
       console.log(`[Unpublish] Reverse action result:`, result);
     } else {
-      // Schedule hasn't executed yet, just cancel it
+      // Schedule hasn't executed yet
       console.log(`[Unpublish] Cancelling pending schedule ${req.params.id}`);
+
+      // Forward Publishing: If this is a 'show' schedule that was finalized,
+      // it was immediately hidden. Now we need to show it again.
+      if (schedule.action === 'show' && schedule.finalized) {
+        console.log(`[Unpublish] Reverting forward publishing: showing section ${schedule.sectionId}`);
+
+        try {
+          result = await modifier.modifyTemplateVisibility(
+            schedule.themeId,
+            schedule.templateName,
+            schedule.sectionId,
+            'show'
+          );
+          console.log(`[Unpublish] Section ${schedule.sectionId} shown successfully`);
+        } catch (showError) {
+          console.error('[Unpublish] Error showing section:', showError);
+        }
+      }
     }
 
     // Update schedule status
