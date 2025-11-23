@@ -127,7 +127,7 @@ router.put('/:id', verifyAuth, async (req, res) => {
 
 /**
  * DELETE /api/schedules/:id - Delete a schedule
- * Reverts forward publishing if needed before deletion
+ * Always ensures sections are visible after deletion
  */
 router.delete('/:id', verifyAuth, async (req, res) => {
   try {
@@ -141,42 +141,21 @@ router.delete('/:id', verifyAuth, async (req, res) => {
 
     let result = null;
 
-    // If this is a finalized 'show' schedule that hasn't executed yet,
-    // we need to show the section again (revert forward publishing)
-    if (schedule.action === 'show' && schedule.finalized && schedule.status !== 'completed') {
-      console.log(`[Delete] Reverting forward publishing: showing section ${schedule.sectionId}`);
+    // SIMPLE RULE: Deleting any schedule always shows the section
+    // This ensures sections are visible after schedule removal
+    console.log(`[Delete] Ensuring section ${schedule.sectionId} is visible`);
 
-      try {
-        result = await modifier.modifyTemplateVisibility(
-          schedule.themeId,
-          schedule.templateName,
-          schedule.sectionId,
-          'show'
-        );
-        console.log(`[Delete] Section ${schedule.sectionId} shown successfully`);
-      } catch (showError) {
-        console.error('[Delete] Error showing section:', showError);
-        // Continue with deletion even if show fails
-      }
-    }
-
-    // If the schedule already executed, revert its action
-    if (schedule.status === 'completed' && schedule.lastRun) {
-      console.log(`[Delete] Reverting executed schedule ${req.params.id}`);
-      const reverseAction = schedule.action === 'hide' ? 'show' : 'hide';
-
-      try {
-        result = await modifier.modifyTemplateVisibility(
-          schedule.themeId,
-          schedule.templateName,
-          schedule.sectionId,
-          reverseAction
-        );
-        console.log(`[Delete] Executed reverse action: ${reverseAction}`);
-      } catch (revertError) {
-        console.error('[Delete] Error reverting executed schedule:', revertError);
-        // Continue with deletion even if revert fails
-      }
+    try {
+      result = await modifier.modifyTemplateVisibility(
+        schedule.themeId,
+        schedule.templateName,
+        schedule.sectionId,
+        'show'
+      );
+      console.log(`[Delete] Section ${schedule.sectionId} shown successfully`);
+    } catch (showError) {
+      console.error('[Delete] Error showing section:', showError);
+      // Continue with deletion even if show fails
     }
 
     // Now delete the schedule

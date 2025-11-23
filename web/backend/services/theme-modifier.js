@@ -113,7 +113,8 @@ export class ThemeModifier {
     }
 
     const updated = [...currentHiddenSections, sectionId];
-    console.log(`[ThemeModifier] Adding ${sectionId} to hidden sections`);
+    console.log(`[ThemeModifier] ⚠️ HIDING SECTION: ${sectionId}`);
+    console.log(`[ThemeModifier] Call stack:`, new Error().stack);
     return updated;
   }
 
