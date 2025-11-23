@@ -29,11 +29,80 @@
 {% assign visibility_mode = block.settings.mode | default: 'js' %}
 
 {% comment %} Load script/css based on mode {% endcomment %}
-{% if visibility_mode == 'css' %}
-  {%- comment -%} CSS mode: Load as stylesheet {%- endcomment -%}
+{% if visibility_mode == 'inline-css' %}
+  {%- comment -%} Inline CSS mode: Generate CSS directly from metafields {%- endcomment -%}
+  {%- comment -%} This mode prevents flickering by applying CSS before DOM renders {%- endcomment -%}
+
+  {%- comment -%} Read hidden sections metafield {%- endcomment -%}
+  {% assign hidden_sections_json = shop.metafields.app_scheduler.hidden_sections.value %}
+
+  {%- comment -%} Read hidden blocks metafield {%- endcomment -%}
+  {% assign hidden_blocks_json = shop.metafields.app_scheduler.hidden_blocks.value %}
+
+  {%- comment -%} Only output style tag if there are sections or blocks to hide {%- endcomment -%}
+  {% if hidden_sections_json != blank or hidden_blocks_json != blank %}
+    <style data-section-scheduler="inline-css">
+      /**
+       * Section Scheduler - Inline CSS Mode
+       * Generated at render time from shop metafields
+       * Prevents flickering by hiding sections/blocks before DOM loads
+       */
+
+      {%- comment -%} Parse hidden sections JSON and generate CSS rules {%- endcomment -%}
+      {% if hidden_sections_json != blank %}
+        {% assign hidden_sections = hidden_sections_json | parse_json %}
+        {% for section_id in hidden_sections %}
+          /* Hide section: {{ section_id }} */
+          #shopify-section-{{ section_id }},
+          [id*="__{{ section_id }}"] {
+            display: none !important;
+          }
+        {% endfor %}
+      {% endif %}
+
+      {%- comment -%} Parse hidden blocks JSON and generate CSS rules {%- endcomment -%}
+      {% if hidden_blocks_json != blank %}
+        {% assign hidden_blocks = hidden_blocks_json | parse_json %}
+        {% for section_entry in hidden_blocks %}
+          {%- comment -%} section_entry is [section_id, blocks_array] {%- endcomment -%}
+          {% assign section_id = section_entry[0] %}
+          {% assign blocks = section_entry[1] %}
+
+          {% for block in blocks %}
+            {%- comment -%} Support both string format and object format {%- endcomment -%}
+            {% if block.blockId %}
+              {% assign block_id = block.blockId %}
+              {% assign position = block.position %}
+            {% else %}
+              {% assign block_id = block %}
+              {% assign position = -1 %}
+            {% endif %}
+
+            /* Hide block: {{ block_id }} in section: {{ section_id }} */
+            [id*="__{{ section_id }}"] [id*="{{ block_id }}"] {
+              display: none !important;
+            }
+
+            {%- comment -%} Position-based targeting for slideshows {%- endcomment -%}
+            {% if position >= 0 %}
+              [id*="__{{ section_id }}"] .slideshow__slide:nth-child({{ position | plus: 1 }}),
+              [id*="__{{ section_id }}"] [class$="__slide"]:nth-child({{ position | plus: 1 }}),
+              [id*="__{{ section_id }}"] [id^="Slide-"]:nth-child({{ position | plus: 1 }}),
+              [id*="__{{ section_id }}"] li[class*="slide"]:nth-child({{ position | plus: 1 }}) {
+                display: none !important;
+              }
+            {% endif %}
+          {% endfor %}
+        {% endfor %}
+      {% endif %}
+    </style>
+  {% endif %}
+
+{% elsif visibility_mode == 'css' %}
+  {%- comment -%} CSS mode: Load as stylesheet from proxy {%- endcomment -%}
   <link rel="stylesheet" href="/apps/scheduler/visibility.js?mode=css">
 {% else %}
-  {%- comment -%} JS mode (default): Load as inline script {%- endcomment -%}
+  {%- comment -%} JS mode (default): Load as inline script from proxy {%- endcomment -%}
   <script src="/apps/scheduler/visibility.js?mode=js"></script>
 {% endif %}
 
@@ -56,16 +125,20 @@
       "label": "Visibility Mode",
       "options": [
         {
+          "value": "inline-css",
+          "label": "Inline CSS (recommended - no flicker)"
+        },
+        {
           "value": "js",
           "label": "JavaScript (removes from DOM)"
         },
         {
           "value": "css",
-          "label": "CSS (display:none)"
+          "label": "CSS via proxy (display:none)"
         }
       ],
-      "default": "js",
-      "info": "JavaScript mode removes sections from DOM entirely. CSS mode hides them with display:none (fallback option)."
+      "default": "inline-css",
+      "info": "Inline CSS generates styles at render time to prevent flickering. JavaScript mode removes sections from DOM after load. CSS via proxy loads styles from app backend."
     }
   ]
 }
