@@ -61,10 +61,10 @@
 
       {%- comment -%} Generate CSS rules for hidden blocks {%- endcomment -%}
       {% if hidden_blocks != blank %}
-        {% for section_entry in hidden_blocks %}
-          {%- comment -%} section_entry is [section_id, blocks_array] {%- endcomment -%}
-          {% assign section_id = section_entry[0] %}
-          {% assign blocks = section_entry[1] %}
+        {%- comment -%} Iterate over each section that has hidden blocks {%- endcomment -%}
+        {% for section_pair in hidden_blocks %}
+          {% assign section_id = section_pair[0] %}
+          {% assign blocks = section_pair[1] %}
 
           {% for block in blocks %}
             {%- comment -%} Support both string format and object format {%- endcomment -%}
@@ -76,12 +76,9 @@
               {% assign position = -1 %}
             {% endif %}
 
-            /* Hide block: {{ block_id }} in section: {{ section_id }} */
-            [id*="__{{ section_id }}"] [id*="{{ block_id }}"] {
-              display: none !important;
-            }
+            /* Hide block: {{ block_id }} (position {{ position }}) in section: {{ section_id }} */
 
-            {%- comment -%} Position-based targeting for slideshows {%- endcomment -%}
+            {%- comment -%} Position-based targeting for slideshows (PRIMARY) {%- endcomment -%}
             {% if position >= 0 %}
               [id*="__{{ section_id }}"] .slideshow__slide:nth-child({{ position | plus: 1 }}),
               [id*="__{{ section_id }}"] [class$="__slide"]:nth-child({{ position | plus: 1 }}),
@@ -90,6 +87,11 @@
                 display: none !important;
               }
             {% endif %}
+
+            {%- comment -%} ID-based targeting (FALLBACK) {%- endcomment -%}
+            [id*="__{{ section_id }}"] [id*="{{ block_id }}"] {
+              display: none !important;
+            }
           {% endfor %}
         {% endfor %}
       {% endif %}
@@ -108,7 +110,12 @@
 {% if request.design_mode %}
   <script>
     console.log('[Section Scheduler] Visibility mode: {{ visibility_mode }}');
-    console.log('[Section Scheduler] Loading from app proxy: /apps/scheduler/visibility.js?mode={{ visibility_mode }}');
+    {% if visibility_mode == 'inline-css' %}
+      console.log('[Section Scheduler] Hidden sections:', {{ hidden_sections | json }});
+      console.log('[Section Scheduler] Hidden blocks:', {{ hidden_blocks | json }});
+    {% else %}
+      console.log('[Section Scheduler] Loading from app proxy: /apps/scheduler/visibility.js?mode={{ visibility_mode }}');
+    {% endif %}
   </script>
 {% endif %}
 
