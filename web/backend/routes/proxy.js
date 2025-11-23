@@ -279,13 +279,27 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
 
         // Strategy 1: Try position-based targeting (primary for slideshows)
         if (position >= 0) {
-          // Try common block container patterns
-          var blockContainers = sectionContainer.querySelectorAll('.slideshow__slide, [class*="slide"], [class*="block"], [data-block-id]');
+          // Try specific block selectors in order of specificity
+          // More specific selectors first to avoid matching parent containers
+          var selectors = [
+            '.slideshow__slide',           // Shopify Dawn theme slideshow slides
+            '[class$="__slide"]',          // BEM pattern for slides
+            '[id^="Slide-"]',              // Slide IDs that start with "Slide-"
+            '.collapsible-content__item',  // Collapsible content items
+            '[id^="Details-"]',            // Details/collapsible IDs
+            'li[class*="slide"]',          // List items that are slides
+            'div[class*="block-"]'         // Div blocks with block- prefix
+          ];
 
-          if (blockContainers.length > position) {
-            blockContainers[position].remove();
-            removed++;
-            found = true;
+          // Try each selector until we find matching elements
+          for (var s = 0; s < selectors.length; s++) {
+            var blockContainers = sectionContainer.querySelectorAll(selectors[s]);
+            if (blockContainers.length > position) {
+              blockContainers[position].remove();
+              removed++;
+              found = true;
+              break;
+            }
           }
         }
 

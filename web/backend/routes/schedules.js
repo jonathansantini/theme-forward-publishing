@@ -217,14 +217,14 @@ router.post('/:id/finalize', verifyAuth, async (req, res) => {
       try {
         // Immediately hide the section/blocks
         if (blockIds.length > 0) {
-          // Hide specific blocks
-          const hiddenBlocks = await modifier.getHiddenBlocks();
-          const currentBlocks = hiddenBlocks[schedule.sectionId] || [];
-          const updatedBlocks = {
-            ...hiddenBlocks,
-            [schedule.sectionId]: [...new Set([...currentBlocks, ...blockIds])]
-          };
-          await modifier.updateHiddenBlocksMetafield(updatedBlocks);
+          // Hide specific blocks - use modifyBlockVisibility to properly store positions
+          await modifier.modifyBlockVisibility(
+            schedule.themeId,
+            schedule.templateName,
+            schedule.sectionId,
+            blockIds,
+            'hide'
+          );
         } else {
           // Hide entire section
           const hiddenSections = await modifier.getHiddenSections();
