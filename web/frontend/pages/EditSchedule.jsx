@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Page, Layout, Banner, Spinner, Card, Text, Button, ButtonGroup } from '@shopify/polaris';
+import { Page, Layout, Banner, Spinner, Card, Text } from '@shopify/polaris';
 import ScheduleForm from '../components/ScheduleForm';
 import BlockPicker from '../components/BlockPicker';
 import { useSchedule, useSchedules } from '../hooks/useSchedules';
@@ -9,12 +9,11 @@ function EditSchedule() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { schedule, loading } = useSchedule(id);
-  const { updateSchedule, finalizeSchedule } = useSchedules();
+  const { updateSchedule } = useSchedules();
 
   const [selectedBlocks, setSelectedBlocks] = useState([]);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
-  const [publishing, setPublishing] = useState(false);
 
   // Initialize selected blocks from schedule data
   useEffect(() => {
@@ -52,26 +51,6 @@ function EditSchedule() {
 
   const handleCancel = () => {
     navigate('/');
-  };
-
-  const handlePublish = async () => {
-    setError(null);
-    setPublishing(true);
-
-    try {
-      await finalizeSchedule(id);
-      setSuccess(true);
-
-      // Navigate back to dashboard after a brief delay
-      setTimeout(() => {
-        navigate('/');
-      }, 1500);
-    } catch (err) {
-      console.error('Publish schedule error:', err);
-      setError(err.response?.data?.error || err.message || 'Failed to publish schedule');
-    } finally {
-      setPublishing(false);
-    }
   };
 
   if (loading) {
@@ -188,35 +167,6 @@ function EditSchedule() {
             submitLabel="Update Schedule"
           />
         </Layout.Section>
-
-        {!schedule.finalized && (
-          <Layout.Section>
-            <Card>
-              <div style={{ padding: '16px' }}>
-                <Text as="h2" variant="headingMd" fontWeight="semibold">
-                  Publish Schedule
-                </Text>
-                <div style={{ marginTop: '16px' }}>
-                  <Text as="p" variant="bodyMd" color="subdued">
-                    This schedule is currently unpublished. Click "Publish" to activate it and apply forward publishing (if applicable).
-                  </Text>
-                </div>
-                <div style={{ marginTop: '16px' }}>
-                  <ButtonGroup>
-                    <Button onClick={handleCancel}>Cancel</Button>
-                    <Button
-                      variant="primary"
-                      onClick={handlePublish}
-                      loading={publishing}
-                    >
-                      Publish Schedule
-                    </Button>
-                  </ButtonGroup>
-                </div>
-              </div>
-            </Card>
-          </Layout.Section>
-        )}
       </Layout>
     </Page>
   );

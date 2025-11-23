@@ -204,7 +204,7 @@ function Dashboard() {
                           {!finalized && getStatusBadge(status)}
                           {finalized && <Badge status="success">Published</Badge>}
                           <ButtonGroup>
-                            {!finalized && status === 'pending' && (
+                            {!finalized && (
                               <Button
                                 size="slim"
                                 onClick={(e) => {
