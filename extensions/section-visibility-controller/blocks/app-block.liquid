@@ -50,8 +50,8 @@
       (function() {
         'use strict';
 
-        var hiddenSections = {{ hidden_sections | default: '[]' | json }};
-        var hiddenBlocks = {{ hidden_blocks | default: '{}' | json }};
+        var hiddenSections = {% if hidden_sections %}{{ hidden_sections | json }}{% else %}[]{% endif %};
+        var hiddenBlocks = {% if hidden_blocks %}{{ hidden_blocks | json }}{% else %}{}{% endif %};
 
         console.log('[Section Scheduler Inline] Hidden sections:', hiddenSections);
         console.log('[Section Scheduler Inline] Hidden blocks:', hiddenBlocks);
