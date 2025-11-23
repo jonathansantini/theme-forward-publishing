@@ -68,6 +68,7 @@ function Dashboard() {
       active: { status: 'attention', label: 'Active' },
       completed: { status: 'success', label: 'Completed' },
       failed: { status: 'critical', label: 'Failed' },
+      cancelled: { status: 'default', label: 'Unpublished' },
     };
 
     const config = statusMap[status] || { status: 'default', label: status };
