@@ -127,14 +127,62 @@ router.put('/:id', verifyAuth, async (req, res) => {
 
 /**
  * DELETE /api/schedules/:id - Delete a schedule
+ * Reverts forward publishing if needed before deletion
  */
 router.delete('/:id', verifyAuth, async (req, res) => {
   try {
-    const { storage } = initServices(req.shopifySession);
+    const { storage, modifier } = initServices(req.shopifySession);
 
+    // Get the schedule first to check if we need to revert changes
+    const schedule = await storage.getSchedule(req.params.id);
+    if (!schedule) {
+      return res.status(404).json({ error: 'Schedule not found' });
+    }
+
+    let result = null;
+
+    // If this is a finalized 'show' schedule that hasn't executed yet,
+    // we need to show the section again (revert forward publishing)
+    if (schedule.action === 'show' && schedule.finalized && schedule.status !== 'completed') {
+      console.log(`[Delete] Reverting forward publishing: showing section ${schedule.sectionId}`);
+
+      try {
+        result = await modifier.modifyTemplateVisibility(
+          schedule.themeId,
+          schedule.templateName,
+          schedule.sectionId,
+          'show'
+        );
+        console.log(`[Delete] Section ${schedule.sectionId} shown successfully`);
+      } catch (showError) {
+        console.error('[Delete] Error showing section:', showError);
+        // Continue with deletion even if show fails
+      }
+    }
+
+    // If the schedule already executed, revert its action
+    if (schedule.status === 'completed' && schedule.lastRun) {
+      console.log(`[Delete] Reverting executed schedule ${req.params.id}`);
+      const reverseAction = schedule.action === 'hide' ? 'show' : 'hide';
+
+      try {
+        result = await modifier.modifyTemplateVisibility(
+          schedule.themeId,
+          schedule.templateName,
+          schedule.sectionId,
+          reverseAction
+        );
+        console.log(`[Delete] Executed reverse action: ${reverseAction}`);
+      } catch (revertError) {
+        console.error('[Delete] Error reverting executed schedule:', revertError);
+        // Continue with deletion even if revert fails
+      }
+    }
+
+    // Now delete the schedule
     await storage.deleteSchedule(req.params.id);
 
-    res.json({ success: true });
+    res.json({ success: true, result });
   } catch (error) {
     console.error('Delete schedule error:', error);
     res.status(500).json({ error: error.message });

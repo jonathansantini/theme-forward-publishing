@@ -112,15 +112,19 @@ export class MetafieldStorage {
 
   /**
    * Get pending schedules that need to be executed
+   * IMPORTANT: Only returns schedules that are both pending/active AND finalized
    */
   async getPendingSchedules() {
     const schedules = await this.getSchedules();
     console.log('[getPendingSchedules] Total schedules:', schedules.length);
     schedules.forEach(s => {
-      console.log(`[getPendingSchedules] Schedule ${s.id}: status=${s.status}, executeAt=${s.executeAt}`);
+      console.log(`[getPendingSchedules] Schedule ${s.id}: status=${s.status}, finalized=${s.finalized}, executeAt=${s.executeAt}`);
     });
-    const pending = schedules.filter((s) => s.status === 'pending' || s.status === 'active');
-    console.log('[getPendingSchedules] Pending/active schedules:', pending.length);
+    // Only process schedules that are finalized - draft schedules should not execute
+    const pending = schedules.filter((s) =>
+      (s.status === 'pending' || s.status === 'active') && s.finalized === true
+    );
+    console.log('[getPendingSchedules] Pending/active AND finalized schedules:', pending.length);
     return pending;
   }
 
