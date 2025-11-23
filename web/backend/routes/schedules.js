@@ -242,9 +242,10 @@ router.post('/:id/finalize', verifyAuth, async (req, res) => {
       }
     }
 
-    // Now finalize the schedule
+    // Now finalize the schedule - also ensure status is pending
     const updatedSchedule = await storage.updateSchedule(req.params.id, {
       finalized: true,
+      status: 'pending',
     });
 
     res.json({
