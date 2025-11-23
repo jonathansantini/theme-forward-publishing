@@ -43,13 +43,13 @@ function Dashboard() {
   const handleFinalizeSchedule = async (id) => {
     if (
       confirm(
-        'Finalize this schedule? You will not be able to edit it unless you unpublish it first.'
+        'Publish this schedule? You will not be able to edit it unless you unpublish it first.'
       )
     ) {
       try {
         await finalizeSchedule(id);
       } catch (error) {
-        alert(`Failed to finalize schedule: ${error.message}`);
+        alert(`Failed to publish schedule: ${error.message}`);
       }
     }
   };
@@ -188,8 +188,8 @@ function Dashboard() {
                             alignItems: 'center',
                           }}
                         >
-                          {getStatusBadge(status)}
-                          {finalized && <Badge>Finalized</Badge>}
+                          {!finalized && getStatusBadge(status)}
+                          {finalized && <Badge status="success">Published</Badge>}
                           <ButtonGroup>
                             {!finalized && status === 'pending' && (
                               <Button
@@ -199,7 +199,7 @@ function Dashboard() {
                                   handleFinalizeSchedule(id);
                                 }}
                               >
-                                Finalize
+                                Publish
                               </Button>
                             )}
                             {finalized && (
