@@ -239,6 +239,7 @@ router.post('/:id/finalize', verifyAuth, async (req, res) => {
 
 /**
  * POST /api/schedules/:id/unpublish - Unpublish a schedule (unlock it)
+ * Always ensures sections are visible after unpublishing
  */
 router.post('/:id/unpublish', verifyAuth, async (req, res) => {
   try {
@@ -252,45 +253,21 @@ router.post('/:id/unpublish', verifyAuth, async (req, res) => {
 
     let result = null;
 
-    // If the schedule has already been executed, revert the changes
-    if (schedule.status === 'completed' || schedule.lastRun) {
-      console.log(`[Unpublish] Reverting executed schedule ${req.params.id}`);
-      console.log(`[Unpublish] Original action was: ${schedule.action}`);
+    // SIMPLE RULE: Unpublishing any schedule always shows the section
+    // This ensures sections are visible when schedules are cancelled
+    console.log(`[Unpublish] Ensuring section ${schedule.sectionId} is visible`);
 
-      // Reverse the action: if we hid the section, show it. If we showed it, hide it.
-      const reverseAction = schedule.action === 'hide' ? 'show' : 'hide';
-
-      console.log(`[Unpublish] Executing reverse action: ${reverseAction}`);
-
+    try {
       result = await modifier.modifyTemplateVisibility(
         schedule.themeId,
         schedule.templateName,
         schedule.sectionId,
-        reverseAction
+        'show'
       );
-
-      console.log(`[Unpublish] Reverse action result:`, result);
-    } else {
-      // Schedule hasn't executed yet
-      console.log(`[Unpublish] Cancelling pending schedule ${req.params.id}`);
-
-      // Forward Publishing: If this is a 'show' schedule that was finalized,
-      // it was immediately hidden. Now we need to show it again.
-      if (schedule.action === 'show' && schedule.finalized) {
-        console.log(`[Unpublish] Reverting forward publishing: showing section ${schedule.sectionId}`);
-
-        try {
-          result = await modifier.modifyTemplateVisibility(
-            schedule.themeId,
-            schedule.templateName,
-            schedule.sectionId,
-            'show'
-          );
-          console.log(`[Unpublish] Section ${schedule.sectionId} shown successfully`);
-        } catch (showError) {
-          console.error('[Unpublish] Error showing section:', showError);
-        }
-      }
+      console.log(`[Unpublish] Section ${schedule.sectionId} shown successfully`);
+    } catch (showError) {
+      console.error('[Unpublish] Error showing section:', showError);
+      // Continue with unpublish even if show fails
     }
 
     // Update schedule status
