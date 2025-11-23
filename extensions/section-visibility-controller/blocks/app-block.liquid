@@ -96,32 +96,44 @@
         function removeBlocks() {
           var removed = 0;
 
+          console.log('[Section Scheduler Inline] removeBlocks called, hiddenBlocks:', hiddenBlocks);
+
           for (var sectionId in hiddenBlocks) {
             if (!hiddenBlocks.hasOwnProperty(sectionId)) continue;
 
+            console.log('[Section Scheduler Inline] Processing section:', sectionId);
             var blocks = hiddenBlocks[sectionId];
             var sectionContainer = document.querySelector('[id*="__' + sectionId + '"]');
 
+            console.log('[Section Scheduler Inline] Section container found:', !!sectionContainer);
             if (!sectionContainer) {
               console.log('[Section Scheduler Inline] Section not found: ' + sectionId);
               continue;
             }
 
+            console.log('[Section Scheduler Inline] Section has', sectionContainer.children.length, 'children');
+
             blocks.forEach(function(block) {
               var blockId = typeof block === 'string' ? block : block.blockId;
               var position = typeof block === 'object' ? block.position : -1;
 
+              console.log('[Section Scheduler Inline] Processing block:', blockId, 'at position:', position);
+
               // Position-based removal (works for any DOM structure)
               if (position >= 0) {
                 var children = Array.from(sectionContainer.children);
+                console.log('[Section Scheduler Inline] Children array length:', children.length);
                 if (children[position]) {
                   console.log('[Section Scheduler Inline] Removing child at position ' + position + ' from ' + sectionId);
                   children[position].remove();
                   removed++;
+                } else {
+                  console.log('[Section Scheduler Inline] No child at position ' + position);
                 }
               } else {
                 // Fallback: try to find by block ID in element attributes
                 var blockElements = sectionContainer.querySelectorAll('[id*="' + blockId + '"]');
+                console.log('[Section Scheduler Inline] Found', blockElements.length, 'elements with ID containing', blockId);
                 if (blockElements.length > 0) {
                   blockElements.forEach(function(el) {
                     el.remove();
@@ -132,9 +144,7 @@
             });
           }
 
-          if (removed > 0) {
-            console.log('[Section Scheduler Inline] Removed ' + removed + ' block(s)');
-          }
+          console.log('[Section Scheduler Inline] Total removed:', removed);
         }
 
         // Apply hiding immediately
