@@ -25,18 +25,21 @@ export class Scheduler {
    * Execute a single schedule
    */
   async executeSchedule(schedule) {
-    console.log(`Executing schedule ${schedule.id}: ${schedule.action} ${schedule.sectionId}`);
+    const blockIds = schedule.blockIds || [];
+    const target = blockIds.length > 0 ? `blocks ${blockIds.join(', ')} in` : '';
+    console.log(`Executing schedule ${schedule.id}: ${schedule.action} ${target} ${schedule.sectionId}`);
 
     try {
       // Update status to active
       await this.storage.updateSchedule(schedule.id, { status: 'active' });
 
-      // Execute the theme modification
+      // Execute the theme modification (section or blocks)
       await this.modifier.modifyTemplateVisibility(
         schedule.themeId,
         schedule.templateName,
         schedule.sectionId,
-        schedule.action
+        schedule.action,
+        blockIds
       );
 
       // Determine next status

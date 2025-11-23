@@ -94,21 +94,24 @@ router.post('/', verifyAuth, async (req, res) => {
 
     console.log(`[Create] Creating schedule in draft state (finalized=false)`);
 
-    // CLEANUP: For 'show' schedules, ensure the section is visible when created
+    // CLEANUP: For 'show' schedules, ensure the section/blocks are visible when created
     // This clears any leftover hidden state from previous schedules
     if (req.body.action === 'show') {
-      console.log(`[Create] Ensuring section ${req.body.sectionId} is visible for new 'show' schedule`);
+      const blockIds = req.body.blockIds || [];
+      const target = blockIds.length > 0 ? `blocks ${blockIds.join(', ')}` : `section`;
+      console.log(`[Create] Ensuring ${target} in ${req.body.sectionId} is visible for new 'show' schedule`);
 
       try {
         await modifier.modifyTemplateVisibility(
           req.body.themeId,
           req.body.templateName,
           req.body.sectionId,
-          'show'
+          'show',
+          blockIds
         );
-        console.log(`[Create] Section ${req.body.sectionId} cleanup complete`);
+        console.log(`[Create] ${target} cleanup complete`);
       } catch (cleanupError) {
-        console.error('[Create] Error during section cleanup:', cleanupError);
+        console.error('[Create] Error during cleanup:', cleanupError);
         // Continue with schedule creation even if cleanup fails
       }
     }
@@ -160,20 +163,23 @@ router.delete('/:id', verifyAuth, async (req, res) => {
 
     let result = null;
 
-    // SIMPLE RULE: Deleting any schedule always shows the section
-    // This ensures sections are visible after schedule removal
-    console.log(`[Delete] Ensuring section ${schedule.sectionId} is visible`);
+    // SIMPLE RULE: Deleting any schedule always shows the section/blocks
+    // This ensures content is visible after schedule removal
+    const blockIds = schedule.blockIds || [];
+    const target = blockIds.length > 0 ? `blocks ${blockIds.join(', ')}` : `section`;
+    console.log(`[Delete] Ensuring ${target} in ${schedule.sectionId} is visible`);
 
     try {
       result = await modifier.modifyTemplateVisibility(
         schedule.themeId,
         schedule.templateName,
         schedule.sectionId,
-        'show'
+        'show',
+        blockIds
       );
-      console.log(`[Delete] Section ${schedule.sectionId} shown successfully`);
+      console.log(`[Delete] ${target} shown successfully`);
     } catch (showError) {
-      console.error('[Delete] Error showing section:', showError);
+      console.error('[Delete] Error showing content:', showError);
       // Continue with deletion even if show fails
     }
 
@@ -201,22 +207,36 @@ router.post('/:id/finalize', verifyAuth, async (req, res) => {
       return res.status(404).json({ error: 'Schedule not found' });
     }
 
-    // Forward Publishing: If action is 'show', immediately hide the section
-    // It will be shown when the schedule executes at the scheduled time
+    // Forward Publishing: If action is 'show', immediately hide the section/blocks
+    // They will be shown when the schedule executes at the scheduled time
     if (schedule.action === 'show') {
-      console.log(`[Finalize] Forward publishing: hiding section ${schedule.sectionId} until scheduled show time`);
+      const blockIds = schedule.blockIds || [];
+      const target = blockIds.length > 0 ? `blocks ${blockIds.join(', ')}` : `section`;
+      console.log(`[Finalize] Forward publishing: hiding ${target} in ${schedule.sectionId} until scheduled show time`);
 
       try {
-        // Immediately hide the section by adding it to hidden_sections metafield
-        const hiddenSections = await modifier.getHiddenSections();
-        const updatedSections = await modifier.hideSection(schedule.sectionId, hiddenSections);
-        await modifier.updateHiddenSectionsMetafield(updatedSections);
+        // Immediately hide the section/blocks
+        if (blockIds.length > 0) {
+          // Hide specific blocks
+          const hiddenBlocks = await modifier.getHiddenBlocks();
+          const currentBlocks = hiddenBlocks[schedule.sectionId] || [];
+          const updatedBlocks = {
+            ...hiddenBlocks,
+            [schedule.sectionId]: [...new Set([...currentBlocks, ...blockIds])]
+          };
+          await modifier.updateHiddenBlocksMetafield(updatedBlocks);
+        } else {
+          // Hide entire section
+          const hiddenSections = await modifier.getHiddenSections();
+          const updatedSections = await modifier.hideSection(schedule.sectionId, hiddenSections);
+          await modifier.updateHiddenSectionsMetafield(updatedSections);
+        }
 
-        console.log(`[Finalize] Section ${schedule.sectionId} hidden successfully`);
+        console.log(`[Finalize] ${target} hidden successfully`);
       } catch (hideError) {
-        console.error('[Finalize] Error hiding section for forward publishing:', hideError);
+        console.error('[Finalize] Error hiding content for forward publishing:', hideError);
         return res.status(500).json({
-          error: 'Failed to hide section for forward publishing',
+          error: 'Failed to hide content for forward publishing',
           details: hideError.message
         });
       }
@@ -253,20 +273,23 @@ router.post('/:id/unpublish', verifyAuth, async (req, res) => {
 
     let result = null;
 
-    // SIMPLE RULE: Unpublishing any schedule always shows the section
-    // This ensures sections are visible when schedules are cancelled
-    console.log(`[Unpublish] Ensuring section ${schedule.sectionId} is visible`);
+    // SIMPLE RULE: Unpublishing any schedule always shows the section/blocks
+    // This ensures content is visible when schedules are cancelled
+    const blockIds = schedule.blockIds || [];
+    const target = blockIds.length > 0 ? `blocks ${blockIds.join(', ')}` : `section`;
+    console.log(`[Unpublish] Ensuring ${target} in ${schedule.sectionId} is visible`);
 
     try {
       result = await modifier.modifyTemplateVisibility(
         schedule.themeId,
         schedule.templateName,
         schedule.sectionId,
-        'show'
+        'show',
+        blockIds
       );
-      console.log(`[Unpublish] Section ${schedule.sectionId} shown successfully`);
+      console.log(`[Unpublish] ${target} shown successfully`);
     } catch (showError) {
-      console.error('[Unpublish] Error showing section:', showError);
+      console.error('[Unpublish] Error showing content:', showError);
       // Continue with unpublish even if show fails
     }
 

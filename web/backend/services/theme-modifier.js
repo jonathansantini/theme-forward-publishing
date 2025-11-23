@@ -13,16 +13,20 @@ export class ThemeModifier {
    * Main function to modify section visibility
    * Now updates metafields instead of modifying theme files
    */
-  async modifyTemplateVisibility(themeId, templateName, sectionId, action) {
+  async modifyTemplateVisibility(themeId, templateName, sectionId, action, blockIds = []) {
     console.log(
-      `[ThemeModifier] ${action} section ${sectionId} in ${templateName}`
+      `[ThemeModifier] ${action} section ${sectionId}${blockIds.length > 0 ? ` blocks: ${blockIds.join(', ')}` : ''} in ${templateName}`
     );
 
     try {
-      // Get current list of hidden sections
+      // If blockIds provided, modify block visibility instead of section
+      if (blockIds && blockIds.length > 0) {
+        return await this.modifyBlockVisibility(sectionId, blockIds, action);
+      }
+
+      // Otherwise, modify section visibility as before
       const hiddenSections = await this.getHiddenSections();
 
-      // Update the list based on action
       let updatedSections;
       if (action === 'hide') {
         updatedSections = await this.hideSection(sectionId, hiddenSections);
@@ -32,10 +36,7 @@ export class ThemeModifier {
         throw new Error(`Invalid action: ${action}`);
       }
 
-      // Save updated list to shop metafield
       await this.updateHiddenSectionsMetafield(updatedSections);
-
-      // Log the modification
       await this.logModification(themeId, templateName, sectionId, action, true);
 
       console.log(`[ThemeModifier] Successfully ${action} section ${sectionId}`);
@@ -49,7 +50,6 @@ export class ThemeModifier {
     } catch (error) {
       console.error('[ThemeModifier] Error:', error);
 
-      // Log the failed modification
       await this.logModification(
         themeId,
         templateName,
@@ -59,6 +59,116 @@ export class ThemeModifier {
         error.message
       );
 
+      throw error;
+    }
+  }
+
+  /**
+   * Modify block visibility within a section
+   */
+  async modifyBlockVisibility(sectionId, blockIds, action) {
+    console.log(`[ThemeModifier] ${action} blocks in section ${sectionId}:`, blockIds);
+
+    const hiddenBlocks = await this.getHiddenBlocks();
+
+    let updatedBlocks = { ...hiddenBlocks };
+
+    if (action === 'hide') {
+      // Add blocks to hidden list for this section
+      const currentBlocks = updatedBlocks[sectionId] || [];
+      const newBlocks = [...new Set([...currentBlocks, ...blockIds])]; // Remove duplicates
+      updatedBlocks[sectionId] = newBlocks;
+      console.log(`[ThemeModifier] ⚠️ HIDING BLOCKS in ${sectionId}:`, blockIds);
+    } else if (action === 'show') {
+      // Remove blocks from hidden list
+      if (updatedBlocks[sectionId]) {
+        updatedBlocks[sectionId] = updatedBlocks[sectionId].filter(
+          id => !blockIds.includes(id)
+        );
+        // Remove section key if no blocks are hidden
+        if (updatedBlocks[sectionId].length === 0) {
+          delete updatedBlocks[sectionId];
+        }
+      }
+      console.log(`[ThemeModifier] Showing blocks in ${sectionId}:`, blockIds);
+    } else {
+      throw new Error(`Invalid action: ${action}`);
+    }
+
+    await this.updateHiddenBlocksMetafield(updatedBlocks);
+
+    return {
+      success: true,
+      message: `Blocks ${action === 'hide' ? 'hidden' : 'shown'} successfully`,
+      hiddenBlocks: updatedBlocks,
+    };
+  }
+
+  /**
+   * Get hidden blocks from shop metafield
+   * Returns object like: { "section_id": ["block_1", "block_2"], ... }
+   */
+  async getHiddenBlocks() {
+    try {
+      const shopInfo = await this.client.getShopInfo();
+
+      const query = `
+        query getHiddenBlocks($ownerId: ID!) {
+          node(id: $ownerId) {
+            ... on Shop {
+              metafield(namespace: "app_scheduler", key: "hidden_blocks") {
+                value
+              }
+            }
+          }
+        }
+      `;
+
+      const response = await this.client.query(query, {
+        ownerId: shopInfo.id,
+      });
+
+      const metafieldValue = response?.data?.node?.metafield?.value;
+
+      if (!metafieldValue) {
+        console.log('[ThemeModifier] No hidden blocks metafield found, returning empty object');
+        return {};
+      }
+
+      const parsed = JSON.parse(metafieldValue);
+      console.log('[ThemeModifier] Current hidden blocks:', parsed);
+      return parsed;
+    } catch (error) {
+      console.error('[ThemeModifier] Error getting hidden blocks:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Update the shop metafield with hidden blocks
+   */
+  async updateHiddenBlocksMetafield(hiddenBlocks) {
+    try {
+      const shopInfo = await this.client.getShopInfo();
+
+      const metafields = [
+        {
+          ownerId: shopInfo.id,
+          namespace: 'app_scheduler',
+          key: 'hidden_blocks',
+          type: 'json',
+          value: JSON.stringify(hiddenBlocks),
+        },
+      ];
+
+      console.log('[ThemeModifier] Updating hidden_blocks metafield:', hiddenBlocks);
+
+      const result = await this.client.setShopMetafields(metafields);
+      console.log('[ThemeModifier] Metafield update result:', result);
+
+      return result;
+    } catch (error) {
+      console.error('[ThemeModifier] Error updating hidden_blocks metafield:', error);
       throw error;
     }
   }
