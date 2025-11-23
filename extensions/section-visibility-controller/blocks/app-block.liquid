@@ -106,18 +106,18 @@
   <script src="/apps/scheduler/visibility.js?mode=js"></script>
 {% endif %}
 
-{% comment %} Debug info - only visible in theme preview mode {% endcomment %}
-{% if request.design_mode %}
-  <script>
-    console.log('[Section Scheduler] Visibility mode: {{ visibility_mode }}');
-    {% if visibility_mode == 'inline-css' %}
-      console.log('[Section Scheduler] Hidden sections:', {{ hidden_sections | json }});
-      console.log('[Section Scheduler] Hidden blocks:', {{ hidden_blocks | json }});
-    {% else %}
-      console.log('[Section Scheduler] Loading from app proxy: /apps/scheduler/visibility.js?mode={{ visibility_mode }}');
-    {% endif %}
-  </script>
-{% endif %}
+{% comment %} Debug info - always visible for troubleshooting {% endcomment %}
+<script>
+  console.log('[Section Scheduler] Visibility mode: {{ visibility_mode }}');
+  {% if visibility_mode == 'inline-css' %}
+    console.log('[Section Scheduler] Hidden sections:', {{ hidden_sections | json }});
+    console.log('[Section Scheduler] Hidden blocks:', {{ hidden_blocks | json }});
+    console.log('[Section Scheduler] Hidden sections type:', typeof {{ hidden_sections | json }});
+    console.log('[Section Scheduler] Hidden blocks type:', typeof {{ hidden_blocks | json }});
+  {% else %}
+    console.log('[Section Scheduler] Loading from app proxy: /apps/scheduler/visibility.js?mode={{ visibility_mode }}');
+  {% endif %}
+</script>
 
 {% schema %}
 {
