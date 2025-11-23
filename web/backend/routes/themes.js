@@ -97,6 +97,59 @@ router.get('/:themeId/templates/:templateName/sections', verifyAuth, async (req,
 });
 
 /**
+ * GET /api/themes/:themeId/templates/:templateName/sections/:sectionId/blocks
+ * Get blocks from a specific section
+ */
+router.get('/:themeId/templates/:templateName/sections/:sectionId/blocks', verifyAuth, async (req, res) => {
+  try {
+    const { modifier } = initServices(req.shopifySession);
+    const { themeId, templateName, sectionId } = req.params;
+
+    // Get the section data
+    const sections = await modifier.getTemplateSections(themeId, templateName);
+
+    if (!sections || !sections.sections[sectionId]) {
+      return res.status(404).json({ error: 'Section not found' });
+    }
+
+    const section = sections.sections[sectionId];
+    const blockOrder = section.block_order || [];
+    const blocks = section.blocks || {};
+
+    // Transform blocks into array with position and display info
+    const blocksArray = blockOrder.map((blockId, index) => {
+      const block = blocks[blockId];
+      if (!block) return null;
+
+      // Get display name from settings (try common name fields)
+      let displayName = block.settings?.heading ||
+                       block.settings?.title ||
+                       block.settings?.text ||
+                       block.type;
+
+      // Truncate long names
+      if (displayName && displayName.length > 50) {
+        displayName = displayName.substring(0, 47) + '...';
+      }
+
+      return {
+        id: blockId,
+        type: block.type,
+        position: index,
+        name: displayName,
+        displayLabel: `${block.type}: ${displayName}`, // "Slide: Image slide"
+        settings: block.settings, // Include for reference
+      };
+    }).filter(Boolean); // Remove nulls
+
+    res.json({ blocks: blocksArray });
+  } catch (error) {
+    console.error('Get section blocks error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * GET /api/themes/:themeId/files/:filename - Get a specific theme file
  */
 router.get('/:themeId/files/*', verifyAuth, async (req, res) => {
