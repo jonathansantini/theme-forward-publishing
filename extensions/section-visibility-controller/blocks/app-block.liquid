@@ -33,14 +33,14 @@
   {%- comment -%} Inline CSS mode: Generate CSS directly from metafields {%- endcomment -%}
   {%- comment -%} This mode prevents flickering by applying CSS before DOM renders {%- endcomment -%}
 
-  {%- comment -%} Read hidden sections metafield {%- endcomment -%}
-  {% assign hidden_sections_json = shop.metafields.app_scheduler.hidden_sections.value %}
+  {%- comment -%} Read hidden sections metafield - .value already returns parsed JSON {%- endcomment -%}
+  {% assign hidden_sections = shop.metafields.app_scheduler.hidden_sections.value %}
 
-  {%- comment -%} Read hidden blocks metafield {%- endcomment -%}
-  {% assign hidden_blocks_json = shop.metafields.app_scheduler.hidden_blocks.value %}
+  {%- comment -%} Read hidden blocks metafield - .value already returns parsed JSON {%- endcomment -%}
+  {% assign hidden_blocks = shop.metafields.app_scheduler.hidden_blocks.value %}
 
   {%- comment -%} Only output style tag if there are sections or blocks to hide {%- endcomment -%}
-  {% if hidden_sections_json != blank or hidden_blocks_json != blank %}
+  {% if hidden_sections != blank or hidden_blocks != blank %}
     <style data-section-scheduler="inline-css">
       /**
        * Section Scheduler - Inline CSS Mode
@@ -48,9 +48,8 @@
        * Prevents flickering by hiding sections/blocks before DOM loads
        */
 
-      {%- comment -%} Parse hidden sections JSON and generate CSS rules {%- endcomment -%}
-      {% if hidden_sections_json != blank %}
-        {% assign hidden_sections = hidden_sections_json | parse_json %}
+      {%- comment -%} Generate CSS rules for hidden sections {%- endcomment -%}
+      {% if hidden_sections != blank %}
         {% for section_id in hidden_sections %}
           /* Hide section: {{ section_id }} */
           #shopify-section-{{ section_id }},
@@ -60,9 +59,8 @@
         {% endfor %}
       {% endif %}
 
-      {%- comment -%} Parse hidden blocks JSON and generate CSS rules {%- endcomment -%}
-      {% if hidden_blocks_json != blank %}
-        {% assign hidden_blocks = hidden_blocks_json | parse_json %}
+      {%- comment -%} Generate CSS rules for hidden blocks {%- endcomment -%}
+      {% if hidden_blocks != blank %}
         {% for section_entry in hidden_blocks %}
           {%- comment -%} section_entry is [section_id, blocks_array] {%- endcomment -%}
           {% assign section_id = section_entry[0] %}
