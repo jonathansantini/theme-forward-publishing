@@ -189,42 +189,10 @@ async function getHiddenBlocks(graphqlClient) {
 /**
  * Helper: Generate JavaScript to remove sections and blocks from DOM
  * This runs inline in <head> before sections render
- * Includes CSS injection for immediate hiding before theme scripts initialize
  */
 function generateJavaScript(hiddenSections, hiddenBlocks) {
   const sectionsList = hiddenSections || [];
   const blocksList = hiddenBlocks || {};
-
-  // Generate inline CSS rules for immediate block hiding
-  let inlineCSS = '';
-  for (const sectionId in blocksList) {
-    if (!blocksList.hasOwnProperty(sectionId)) continue;
-
-    const blocks = blocksList[sectionId];
-    blocks.forEach(block => {
-      const blockId = typeof block === 'string' ? block : block.blockId;
-      const position = typeof block === 'object' ? block.position : -1;
-
-      if (position >= 0) {
-        // Position-based CSS rules (nth-child is 1-indexed)
-        const nthChild = position + 1;
-        // Target multiple possible block patterns
-        inlineCSS += `[id*="__${sectionId}"] .slideshow__slide:nth-child(${nthChild}),\n`;
-        inlineCSS += `[id*="__${sectionId}"] [class$="__slide"]:nth-child(${nthChild}),\n`;
-        inlineCSS += `[id*="__${sectionId}"] [id^="Slide-"]:nth-child(${nthChild}),\n`;
-        inlineCSS += `[id*="__${sectionId}"] .collapsible-content__item:nth-child(${nthChild}),\n`;
-        inlineCSS += `[id*="__${sectionId}"] li:nth-child(${nthChild}) { display: none !important; }\n`;
-      }
-
-      // Also hide by block ID as fallback
-      inlineCSS += `[id*="${blockId}"] { display: none !important; }\n`;
-    });
-  }
-
-  // Generate CSS for hidden sections
-  sectionsList.forEach(sectionId => {
-    inlineCSS += `#shopify-section-${sectionId} { display: none !important; }\n`;
-  });
 
   return `/**
  * Section Scheduler - Dynamic Section & Block Visibility
@@ -234,12 +202,6 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
  */
 (function() {
   'use strict';
-
-  // Inject CSS immediately to hide blocks before theme scripts initialize
-  var styleElement = document.createElement('style');
-  styleElement.id = 'section-scheduler-css';
-  styleElement.textContent = \`${inlineCSS}\`;
-  document.head.appendChild(styleElement);
 
   var hiddenSections = ${JSON.stringify(sectionsList)};
   var hiddenBlocks = ${JSON.stringify(blocksList)};
