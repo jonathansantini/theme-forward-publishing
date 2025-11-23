@@ -151,7 +151,14 @@ function Dashboard() {
                     status,
                     recurrence,
                     finalized,
+                    blockIds,
                   } = schedule;
+
+                  // Determine if scheduling blocks or entire section
+                  const isBlockLevel = blockIds && blockIds.length > 0;
+                  const target = isBlockLevel
+                    ? `${blockIds.length} block${blockIds.length !== 1 ? 's' : ''} in ${sectionId}`
+                    : sectionId;
 
                   return (
                     <ResourceItem
@@ -167,11 +174,16 @@ function Dashboard() {
                       >
                         <div style={{ flex: 1 }}>
                           <Text as="h3" variant="headingSm" fontWeight="semibold">
-                            {action === 'hide' ? 'Hide' : 'Show'} {sectionId}
+                            {action === 'hide' ? 'Hide' : 'Show'} {target}
                           </Text>
                           <Text as="p" variant="bodySm" color="subdued">
                             Template: {templateName}
                           </Text>
+                          {isBlockLevel && (
+                            <Text as="p" variant="bodySm" color="subdued">
+                              Block IDs: {blockIds.join(', ')}
+                            </Text>
+                          )}
                           <Text as="p" variant="bodySm">
                             {formatDate(executeAt)} ({getRelativeTime(executeAt)})
                           </Text>

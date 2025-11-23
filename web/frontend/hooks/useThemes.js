@@ -107,4 +107,42 @@ export function useSections(themeId, templateName) {
   return { sections, loading, error };
 }
 
+export function useBlocks(themeId, templateName, sectionId) {
+  const [blocks, setBlocks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const fetch = useAuthenticatedFetch();
+
+  useEffect(() => {
+    if (!themeId || !templateName || !sectionId) {
+      setLoading(false);
+      setBlocks([]);
+      return;
+    }
+
+    const fetchBlocks = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const response = await fetch(
+          `${API_BASE}/themes/${encodeURIComponent(themeId)}/templates/${encodeURIComponent(templateName)}/sections/${encodeURIComponent(sectionId)}/blocks`
+        );
+        const data = await response.json();
+        setBlocks(data.blocks || []);
+      } catch (err) {
+        console.error('Error fetching blocks:', err);
+        setError(err.message);
+        setBlocks([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBlocks();
+  }, [themeId, templateName, sectionId, fetch]);
+
+  return { blocks, loading, error };
+}
+
 export default useThemes;
