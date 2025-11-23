@@ -21,7 +21,7 @@ export class ThemeModifier {
     try {
       // If blockIds provided, modify block visibility instead of section
       if (blockIds && blockIds.length > 0) {
-        return await this.modifyBlockVisibility(sectionId, blockIds, action);
+        return await this.modifyBlockVisibility(themeId, templateName, sectionId, blockIds, action);
       }
 
       // Otherwise, modify section visibility as before
@@ -65,26 +65,59 @@ export class ThemeModifier {
 
   /**
    * Modify block visibility within a section
+   * Fetches section JSON to map block IDs to positions for reliable DOM targeting
    */
-  async modifyBlockVisibility(sectionId, blockIds, action) {
+  async modifyBlockVisibility(themeId, templateName, sectionId, blockIds, action) {
     console.log(`[ThemeModifier] ${action} blocks in section ${sectionId}:`, blockIds);
 
     const hiddenBlocks = await this.getHiddenBlocks();
-
     let updatedBlocks = { ...hiddenBlocks };
 
     if (action === 'hide') {
-      // Add blocks to hidden list for this section
-      const currentBlocks = updatedBlocks[sectionId] || [];
-      const newBlocks = [...new Set([...currentBlocks, ...blockIds])]; // Remove duplicates
-      updatedBlocks[sectionId] = newBlocks;
-      console.log(`[ThemeModifier] ⚠️ HIDING BLOCKS in ${sectionId}:`, blockIds);
+      // Fetch section JSON to get block positions
+      const sectionData = await this.getTemplateSections(themeId, templateName);
+      const section = sectionData?.sections?.[sectionId];
+
+      if (!section || !section.block_order) {
+        console.error(`[ThemeModifier] Could not fetch section data for ${sectionId}`);
+        // Fallback: store blocks without positions
+        const currentBlocks = updatedBlocks[sectionId] || [];
+        const newBlocks = [...new Set([...currentBlocks, ...blockIds])];
+        updatedBlocks[sectionId] = newBlocks;
+      } else {
+        // Map each block ID to its position in block_order
+        const blockOrder = section.block_order;
+        const blocksWithPositions = blockIds.map(blockId => {
+          const position = blockOrder.indexOf(blockId);
+          return {
+            blockId: blockId,
+            position: position >= 0 ? position : -1
+          };
+        });
+
+        // Merge with existing hidden blocks
+        const currentBlocks = updatedBlocks[sectionId] || [];
+        const existingBlockIds = currentBlocks.map(b => typeof b === 'string' ? b : b.blockId);
+
+        // Filter out blocks we're adding from existing list
+        const filteredCurrent = currentBlocks.filter(b => {
+          const id = typeof b === 'string' ? b : b.blockId;
+          return !blockIds.includes(id);
+        });
+
+        // Add new blocks with positions
+        updatedBlocks[sectionId] = [...filteredCurrent, ...blocksWithPositions];
+      }
+
+      console.log(`[ThemeModifier] ⚠️ HIDING BLOCKS in ${sectionId}:`, updatedBlocks[sectionId]);
     } else if (action === 'show') {
       // Remove blocks from hidden list
       if (updatedBlocks[sectionId]) {
-        updatedBlocks[sectionId] = updatedBlocks[sectionId].filter(
-          id => !blockIds.includes(id)
-        );
+        updatedBlocks[sectionId] = updatedBlocks[sectionId].filter(b => {
+          const id = typeof b === 'string' ? b : b.blockId;
+          return !blockIds.includes(id);
+        });
+
         // Remove section key if no blocks are hidden
         if (updatedBlocks[sectionId].length === 0) {
           delete updatedBlocks[sectionId];
@@ -106,7 +139,8 @@ export class ThemeModifier {
 
   /**
    * Get hidden blocks from shop metafield
-   * Returns object like: { "section_id": ["block_1", "block_2"], ... }
+   * Returns object like: { "section_id": [{"blockId": "block_1", "position": 0}, ...] }
+   * Legacy format with just strings is also supported for backward compatibility
    */
   async getHiddenBlocks() {
     try {

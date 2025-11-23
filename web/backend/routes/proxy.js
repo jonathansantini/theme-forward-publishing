@@ -150,7 +150,8 @@ async function getHiddenSections(graphqlClient) {
 
 /**
  * Helper: Get hidden blocks from shop metafield
- * Returns object like: { "section_id": ["block_1", "block_2"], ... }
+ * Returns object like: { "section_id": [{"blockId": "block_1", "position": 0}, ...] }
+ * Legacy format with strings is also supported
  */
 async function getHiddenBlocks(graphqlClient) {
   try {
@@ -253,47 +254,56 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
     for (var sectionId in hiddenBlocks) {
       if (!hiddenBlocks.hasOwnProperty(sectionId)) continue;
 
-      var blockIds = hiddenBlocks[sectionId];
+      var blocks = hiddenBlocks[sectionId];
 
-      blockIds.forEach(function(blockId) {
+      blocks.forEach(function(block) {
         var found = false;
+        var blockId, position;
 
-        // Strategy 1: Try to find by block ID in element ID
-        // Most blocks have IDs like: Details-{blockId}-template--{sectionId}
-        // or Slide-template--{sectionId}-{position}
-        var blockElements = document.querySelectorAll('[id*="' + blockId + '"]');
-
-        if (blockElements.length > 0) {
-          blockElements.forEach(function(el) {
-            el.remove();
-            removed++;
-            found = true;
-          });
+        // Support both old format (string) and new format (object with position)
+        if (typeof block === 'string') {
+          blockId = block;
+          position = -1;
+        } else {
+          blockId = block.blockId;
+          position = block.position;
         }
 
-        // Strategy 2: Fallback - try to find section container and use position
-        // This is useful for slideshow slides which use position-based IDs
+        // Find the section container first
+        var sectionContainer = document.querySelector('[id*="__' + sectionId + '"]');
+
+        if (!sectionContainer) {
+          console.log('[Section Scheduler] Could not find section container: ' + sectionId);
+          return;
+        }
+
+        // Strategy 1: Try position-based targeting (primary for slideshows)
+        if (position >= 0) {
+          // Try common block container patterns
+          var blockContainers = sectionContainer.querySelectorAll('.slideshow__slide, [class*="slide"], [class*="block"], [data-block-id]');
+
+          if (blockContainers.length > position) {
+            blockContainers[position].remove();
+            removed++;
+            found = true;
+          }
+        }
+
+        // Strategy 2: Try to find by block ID in element ID (fallback)
         if (!found) {
-          // Find the section container
-          var sectionContainer = document.querySelector('[id*="__' + sectionId + '"]');
+          var blockElements = sectionContainer.querySelectorAll('[id*="' + blockId + '"]');
 
-          if (sectionContainer) {
-            // For slideshows, try to find by slide class and data attributes
-            var slideElements = sectionContainer.querySelectorAll('[class*="slide"]');
-
-            slideElements.forEach(function(slide) {
-              // Check if slide ID contains our block ID
-              if (slide.id && slide.id.indexOf(blockId) !== -1) {
-                slide.remove();
-                removed++;
-                found = true;
-              }
+          if (blockElements.length > 0) {
+            blockElements.forEach(function(el) {
+              el.remove();
+              removed++;
+              found = true;
             });
           }
         }
 
         if (!found && window.console) {
-          console.log('[Section Scheduler] Could not find block: ' + blockId + ' in section: ' + sectionId);
+          console.log('[Section Scheduler] Could not find block: ' + blockId + ' (position: ' + position + ') in section: ' + sectionId);
         }
       });
     }
@@ -339,8 +349,10 @@ function generateCSS(hiddenSections, hiddenBlocks) {
   for (const sectionId in blocksList) {
     if (!blocksList.hasOwnProperty(sectionId)) continue;
 
-    const blockIds = blocksList[sectionId];
-    blockIds.forEach(blockId => {
+    const blocks = blocksList[sectionId];
+    blocks.forEach(block => {
+      // Support both old format (string) and new format (object)
+      const blockId = typeof block === 'string' ? block : block.blockId;
       // Target elements containing the block ID
       blockRules += `[id*="${blockId}"] { display: none !important; }\n`;
     });
