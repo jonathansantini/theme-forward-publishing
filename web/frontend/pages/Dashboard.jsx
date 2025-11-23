@@ -205,26 +205,26 @@ function Dashboard() {
                           {finalized && <Badge status="success">Published</Badge>}
                           <ButtonGroup>
                             {!finalized && (
-                              <>
-                                <Button
-                                  size="slim"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleEditSchedule(id);
-                                  }}
-                                >
-                                  Edit
-                                </Button>
-                                <Button
-                                  size="slim"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleFinalizeSchedule(id);
-                                  }}
-                                >
-                                  Publish
-                                </Button>
-                              </>
+                              <Button
+                                size="slim"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditSchedule(id);
+                                }}
+                              >
+                                Edit
+                              </Button>
+                            )}
+                            {!finalized && (
+                              <Button
+                                size="slim"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleFinalizeSchedule(id);
+                                }}
+                              >
+                                Publish
+                              </Button>
                             )}
                             {finalized && (
                               <Button
