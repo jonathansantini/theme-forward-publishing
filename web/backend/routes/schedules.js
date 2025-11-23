@@ -60,7 +60,7 @@ router.get('/:id', verifyAuth, async (req, res) => {
  */
 router.post('/', verifyAuth, async (req, res) => {
   try {
-    const { storage, scheduler } = initServices(req.shopifySession);
+    const { storage, scheduler, modifier } = initServices(req.shopifySession);
 
     // Initialize scheduler to get shop timezone
     await scheduler.initialize();
@@ -93,6 +93,25 @@ router.post('/', verifyAuth, async (req, res) => {
     };
 
     console.log(`[Create] Creating schedule in draft state (finalized=false)`);
+
+    // CLEANUP: For 'show' schedules, ensure the section is visible when created
+    // This clears any leftover hidden state from previous schedules
+    if (req.body.action === 'show') {
+      console.log(`[Create] Ensuring section ${req.body.sectionId} is visible for new 'show' schedule`);
+
+      try {
+        await modifier.modifyTemplateVisibility(
+          req.body.themeId,
+          req.body.templateName,
+          req.body.sectionId,
+          'show'
+        );
+        console.log(`[Create] Section ${req.body.sectionId} cleanup complete`);
+      } catch (cleanupError) {
+        console.error('[Create] Error during section cleanup:', cleanupError);
+        // Continue with schedule creation even if cleanup fails
+      }
+    }
 
     // Create schedule
     const schedule = await storage.createSchedule(scheduleData);
