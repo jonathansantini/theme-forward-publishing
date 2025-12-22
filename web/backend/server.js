@@ -8,7 +8,7 @@ import { MetafieldStorage } from './services/metafield-storage.js';
 import { ThemeModifier } from './services/theme-modifier.js';
 import { Scheduler } from './services/scheduler.js';
 import { ScheduleProcessor } from './jobs/schedule-processor.js';
-import { MemorySessionStorage } from '@shopify/shopify-app-session-storage-memory';
+import { createSessionStorage } from './config/session-storage.js';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 
 // Import routes
@@ -16,6 +16,7 @@ import authRoutes from './routes/auth.js';
 import schedulesRoutes from './routes/schedules.js';
 import themesRoutes from './routes/themes.js';
 import proxyRoutes from './routes/proxy.js';
+import webhooksRoutes from './routes/webhooks.js';
 
 // Load environment variables
 dotenv.config();
@@ -36,8 +37,8 @@ app.use((req, res, next) => {
   next();
 });
 
-// Configure session storage (in-memory for MVP, should use Redis/Postgres in production)
-const sessionStorage = new MemorySessionStorage();
+// Configure session storage (Redis in production, in-memory for local dev)
+const sessionStorage = createSessionStorage();
 shopify.config.sessionStorage = sessionStorage;
 
 // Track active shops for schedule processing (MVP approach)
@@ -54,6 +55,9 @@ app.get('/health', (req, res) => {
 
 // Auth routes
 app.use('/', authRoutes);
+
+// Webhook routes (must be registered before body parsing middleware)
+app.use('/webhooks', webhooksRoutes);
 
 // App Proxy routes (Shopify forwards /apps/scheduler/* to /proxy/*)
 app.use('/proxy', proxyRoutes);

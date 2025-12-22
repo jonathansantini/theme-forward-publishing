@@ -2,11 +2,16 @@
 
 client_id = "560df7c4653050d8edc9862692d5c016"
 name = "section-schedular"
-application_url = "https://17f123a4c9a3.ngrok-free.app"
+application_url = "https://a8594397d58b.ngrok-free.app"
 embedded = true
 
 [webhooks]
 api_version = "2025-10"
+
+[[webhooks.subscriptions]]
+# Clean up data when app is uninstalled
+topics = ["app/uninstalled"]
+uri = "/webhooks/app/uninstalled"
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
@@ -16,11 +21,11 @@ use_legacy_install_flow = false
 
 [auth]
 redirect_urls = [
-  "https://17f123a4c9a3.ngrok-free.app/auth/callback",
-  "https://17f123a4c9a3.ngrok-free.app/auth/shopify/callback"
+  "https://a8594397d58b.ngrok-free.app/auth/callback",
+  "https://a8594397d58b.ngrok-free.app/auth/shopify/callback"
 ]
 
 [app_proxy]
-url = "https://17f123a4c9a3.ngrok-free.app/proxy"
+url = "https://a8594397d58b.ngrok-free.app/proxy"
 subpath = "scheduler"
 prefix = "apps"

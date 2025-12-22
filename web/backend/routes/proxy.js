@@ -1,8 +1,12 @@
 import express from 'express';
 import { ShopifyGraphQLClient } from '../services/shopify-api.js';
 import { shopify } from '../services/shopify-api.js';
+import { validateProxyHmac } from '../middleware/validate-proxy-hmac.js';
 
 const router = express.Router();
+
+// Apply HMAC validation to all proxy routes
+router.use(validateProxyHmac);
 
 /**
  * App Proxy Route for Section Visibility

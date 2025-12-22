@@ -21,8 +21,9 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@shopify/shopify-api": "^10.0.0",
-    "@shopify/shopify-app-session-storage-memory": "^3.0.0",
+    "@shopify/shopify-api": "^12.2.0",
+    "@shopify/shopify-app-session-storage-memory": "^5.0.4",
+    "@shopify/shopify-app-session-storage-redis": "^5.0.4",
     "axios": "^1.6.2",
     "compression": "^1.7.4",
     "cors": "^2.8.5",

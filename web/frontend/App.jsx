@@ -1,50 +1,39 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider } from '@shopify/polaris';
-import { Provider as AppBridgeProvider } from '@shopify/app-bridge-react';
+import ErrorBoundary from './components/ErrorBoundary';
 import Dashboard from './pages/Dashboard';
 import CreateSchedule from './pages/CreateSchedule';
 import EditSchedule from './pages/EditSchedule';
 import Settings from './pages/Settings';
 
+/**
+ * App component - Now using new unified App Bridge
+ *
+ * App Bridge is automatically initialized via the script tag in index.html
+ * and the shopify-api-key meta tag. No need for AppBridgeProvider wrapper.
+ *
+ * The global `shopify` variable is available for App Bridge features like:
+ * - shopify.toast.show()
+ * - shopify.modal.show()
+ * - shopify.resourcePicker()
+ * etc.
+ */
 function App() {
-  // Get shop and host from URL params
-  const params = new URLSearchParams(window.location.search);
-  const shop = params.get('shop');
-  const host = params.get('host');
-
-  // Get API key from environment
-  const apiKey = import.meta.env.VITE_SHOPIFY_API_KEY;
-
-  // Debug logging
-  console.log('App initialization:', {
-    apiKey: apiKey ? '✓ Set' : '✗ Missing',
-    shop: shop || 'not provided',
-    host: host || 'not provided',
-  });
-
-  // Show error if API key is missing
-  if (!apiKey) {
+  // Verify App Bridge is loaded
+  if (typeof shopify === 'undefined') {
     return (
       <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
-        <h1>Configuration Error</h1>
+        <h1>App Bridge Not Loaded</h1>
         <p>
-          <strong>VITE_SHOPIFY_API_KEY</strong> is not set in{' '}
-          <code>web/frontend/.env</code>
+          The Shopify App Bridge script failed to load. Please check your internet connection
+          and ensure the app is being accessed through the Shopify admin.
         </p>
-        <p>Please add your Shopify API key to the frontend .env file and restart the dev server.</p>
       </div>
     );
   }
 
-  // App Bridge config
-  const config = {
-    apiKey: apiKey,
-    host: host || window.btoa(`${shop}/admin`) || '',
-    forceRedirect: true,
-  };
-
   return (
-    <AppBridgeProvider config={config}>
+    <ErrorBoundary>
       <AppProvider
         i18n={{
           Polaris: {
@@ -70,7 +59,7 @@ function App() {
           </Routes>
         </BrowserRouter>
       </AppProvider>
-    </AppBridgeProvider>
+    </ErrorBoundary>
   );
 }
 

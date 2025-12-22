@@ -1,8 +1,11 @@
 import '@shopify/shopify-api/adapters/node';
-import { shopifyApi, LATEST_API_VERSION } from '@shopify/shopify-api';
+import { shopifyApi, ApiVersion } from '@shopify/shopify-api';
 import dotenv from 'dotenv';
 
 dotenv.config();
+
+// Get the API version to use (default to the latest stable version)
+const API_VERSION = process.env.SHOPIFY_API_VERSION || ApiVersion.October24;
 
 // Initialize Shopify API
 export const shopify = shopifyApi({
@@ -11,7 +14,7 @@ export const shopify = shopifyApi({
   scopes: process.env.SCOPES?.split(',') || [],
   hostName: process.env.SHOPIFY_APP_URL?.replace(/https?:\/\//, '') || 'localhost:3000',
   hostScheme: 'https', // Always use https for ngrok tunnels
-  apiVersion: process.env.SHOPIFY_API_VERSION || LATEST_API_VERSION,
+  apiVersion: API_VERSION,
   isEmbeddedApp: true,
   logger: {
     level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
@@ -175,9 +178,8 @@ export class ShopifyGraphQLClient {
         console.log('[updateThemeFiles] Asset key:', file.filename);
         console.log('[updateThemeFiles] Content length:', file.body.value?.length || 0);
 
-        // Try API version 2022-10 - the oldest version reported to work
-        // See: https://github.com/Shopify/shopify-api-js/issues/946
-        const apiVersion = '2022-10';
+        // Use configured API version (falls back to the version set in shopify config)
+        const apiVersion = process.env.SHOPIFY_API_VERSION || API_VERSION;
 
         // First, verify we can GET the asset to ensure it exists
         const getUrl = `https://${this.session.shop}/admin/api/${apiVersion}/themes/${numericThemeId}/assets.json?asset[key]=${encodeURIComponent(file.filename)}`;
@@ -203,8 +205,8 @@ export class ShopifyGraphQLClient {
         const getAsset = await getResponse.json();
         console.log('[updateThemeFiles] Asset exists, current size:', getAsset?.asset?.value?.length || 0);
 
-        // Now try to PUT the updated asset
-        const putUrl = `https://${this.session.shop}/admin/api/${apiVersion}/themes/${numericThemeId}/assets.json`;
+        // Now try to PUT the updated asset using the configured API version
+        const putUrl = `https://${this.session.shop}/admin/api/${process.env.SHOPIFY_API_VERSION || API_VERSION}/themes/${numericThemeId}/assets.json`;
         const putBody = {
           asset: {
             key: file.filename,
