@@ -66,28 +66,26 @@ router.get('/visibility.js', async (req, res) => {
     // Use the first session (in production, you'd want to handle this better)
     const session = sessions[0];
 
-    // Get hidden sections and blocks from metafields
+    // Get hidden sections from metafield
+    // (blocks are now handled directly in the theme template, not via JS)
     const graphqlClient = new ShopifyGraphQLClient(session);
     const hiddenSections = await getHiddenSections(graphqlClient);
-    const hiddenBlocks = await getHiddenBlocks(graphqlClient);
 
     console.log('[Proxy] Hidden sections:', hiddenSections);
-    console.log('[Proxy] Hidden blocks:', hiddenBlocks);
 
-    if ((!hiddenSections || hiddenSections.length === 0) &&
-        (!hiddenBlocks || Object.keys(hiddenBlocks).length === 0)) {
+    if (!hiddenSections || hiddenSections.length === 0) {
       return res.status(200).type('text/javascript').send(
-        '// No sections or blocks to hide'
+        '// No sections to hide'
       );
     }
 
     // Generate response based on mode
     let response;
     if (mode === 'css') {
-      response = generateCSS(hiddenSections, hiddenBlocks);
+      response = generateCSS(hiddenSections);
       res.type('text/css');
     } else {
-      response = generateJavaScript(hiddenSections, hiddenBlocks);
+      response = generateJavaScript(hiddenSections);
       res.type('text/javascript');
     }
 
@@ -152,51 +150,12 @@ async function getHiddenSections(graphqlClient) {
   }
 }
 
-/**
- * Helper: Get hidden blocks from shop metafield
- * Returns object like: { "section_id": [{"blockId": "block_1", "position": 0}, ...] }
- * Legacy format with strings is also supported
- */
-async function getHiddenBlocks(graphqlClient) {
-  try {
-    const shopInfo = await graphqlClient.getShopInfo();
-
-    const query = `
-      query getHiddenBlocks($ownerId: ID!) {
-        node(id: $ownerId) {
-          ... on Shop {
-            metafield(namespace: "app_scheduler", key: "hidden_blocks") {
-              value
-            }
-          }
-        }
-      }
-    `;
-
-    const response = await graphqlClient.query(query, {
-      ownerId: shopInfo.id,
-    });
-
-    const metafieldValue = response?.data?.node?.metafield?.value;
-
-    if (!metafieldValue) {
-      return {};
-    }
-
-    return JSON.parse(metafieldValue);
-  } catch (error) {
-    console.error('[Proxy] Error getting hidden blocks:', error);
-    return {};
-  }
-}
 
 /**
- * Helper: Generate JavaScript to remove sections and blocks from DOM
- * This runs inline in <head> before sections render
+ * Helper: Generate JavaScript to remove sections from DOM
  */
-function generateJavaScript(hiddenSections, hiddenBlocks) {
+function generateJavaScript(hiddenSections) {
   const sectionsList = hiddenSections || [];
-  const blocksList = hiddenBlocks || {};
 
   return `/**
  * Section Scheduler - Dynamic Section & Block Visibility
@@ -208,7 +167,6 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
   'use strict';
 
   var hiddenSections = ${JSON.stringify(sectionsList)};
-  var hiddenBlocks = ${JSON.stringify(blocksList)};
 
   // Function to remove sections
   function removeSections() {
@@ -250,91 +208,9 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
     }
   }
 
-  // Function to remove blocks within sections
-  function removeBlocks() {
-    var removed = 0;
-
-    // Iterate through each section that has hidden blocks
-    for (var sectionId in hiddenBlocks) {
-      if (!hiddenBlocks.hasOwnProperty(sectionId)) continue;
-
-      var blocks = hiddenBlocks[sectionId];
-
-      blocks.forEach(function(block) {
-        var found = false;
-        var blockId, position;
-
-        // Support both old format (string) and new format (object with position)
-        if (typeof block === 'string') {
-          blockId = block;
-          position = -1;
-        } else {
-          blockId = block.blockId;
-          position = block.position;
-        }
-
-        // Find the section container first
-        var sectionContainer = document.querySelector('[id*="__' + sectionId + '"]');
-
-        if (!sectionContainer) {
-          console.log('[Section Scheduler] Could not find section container: ' + sectionId);
-          return;
-        }
-
-        // Strategy 1: Try position-based targeting (primary for slideshows)
-        if (position >= 0) {
-          // Try specific block selectors in order of specificity
-          // More specific selectors first to avoid matching parent containers
-          var selectors = [
-            '.slideshow__slide',           // Shopify Dawn theme slideshow slides
-            '[class$="__slide"]',          // BEM pattern for slides
-            '[id^="Slide-"]',              // Slide IDs that start with "Slide-"
-            '.collapsible-content__item',  // Collapsible content items
-            '[id^="Details-"]',            // Details/collapsible IDs
-            'li[class*="slide"]',          // List items that are slides
-            'div[class*="block-"]'         // Div blocks with block- prefix
-          ];
-
-          // Try each selector until we find matching elements
-          for (var s = 0; s < selectors.length; s++) {
-            var blockContainers = sectionContainer.querySelectorAll(selectors[s]);
-            if (blockContainers.length > position) {
-              blockContainers[position].remove();
-              removed++;
-              found = true;
-              break;
-            }
-          }
-        }
-
-        // Strategy 2: Try to find by block ID in element ID (fallback)
-        if (!found) {
-          var blockElements = sectionContainer.querySelectorAll('[id*="' + blockId + '"]');
-
-          if (blockElements.length > 0) {
-            blockElements.forEach(function(el) {
-              el.remove();
-              removed++;
-              found = true;
-            });
-          }
-        }
-
-        if (!found && window.console) {
-          console.log('[Section Scheduler] Could not find block: ' + blockId + ' (position: ' + position + ') in section: ' + sectionId);
-        }
-      });
-    }
-
-    if (removed > 0 && window.console) {
-      console.log('[Section Scheduler] Removed ' + removed + ' block(s) from DOM');
-    }
-  }
-
   // Function to apply all hiding
   function applyVisibility() {
     removeSections();
-    removeBlocks();
   }
 
   // Try to remove sections/blocks as early as possible
@@ -350,41 +226,23 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
 }
 
 /**
- * Helper: Generate CSS to hide sections and blocks
+ * Helper: Generate CSS to hide sections
  * Fallback mode using display:none
  */
-function generateCSS(hiddenSections, hiddenBlocks) {
+function generateCSS(hiddenSections) {
   const sectionsList = hiddenSections || [];
-  const blocksList = hiddenBlocks || {};
 
-  // Generate section hiding rules
-  const sectionRules = sectionsList.map(sectionId =>
+  const rules = sectionsList.map(sectionId =>
     `#shopify-section-${sectionId} { display: none !important; }`
   ).join('\n');
 
-  // Generate block hiding rules
-  let blockRules = '';
-  for (const sectionId in blocksList) {
-    if (!blocksList.hasOwnProperty(sectionId)) continue;
-
-    const blocks = blocksList[sectionId];
-    blocks.forEach(block => {
-      // Support both old format (string) and new format (object)
-      const blockId = typeof block === 'string' ? block : block.blockId;
-      // Target elements containing the block ID
-      blockRules += `[id*="${blockId}"] { display: none !important; }\n`;
-    });
-  }
-
   return `/**
- * Section Scheduler - Section & Block Visibility
+ * Section Scheduler - Section Visibility
  * Generated: ${new Date().toISOString()}
  * Hidden sections: ${sectionsList.join(', ')}
- * Hidden blocks: ${JSON.stringify(blocksList)}
  */
 
-${sectionRules}
-${blockRules}
+${rules}
 `;
 }
 

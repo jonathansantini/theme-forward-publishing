@@ -64,76 +64,172 @@ export class ThemeModifier {
   }
 
   /**
-   * Modify block visibility within a section
-   * Fetches section JSON to map block IDs to positions for reliable DOM targeting
+   * Modify block visibility by directly editing the theme template JSON.
+   * This is the most reliable approach - blocks are removed from the template
+   * entirely so theme JS (e.g. slideshows) initialises with the correct count.
    */
   async modifyBlockVisibility(themeId, templateName, sectionId, blockIds, action) {
     console.log(`[ThemeModifier] ${action} blocks in section ${sectionId}:`, blockIds);
 
-    const hiddenBlocks = await this.getHiddenBlocks();
-    let updatedBlocks = { ...hiddenBlocks };
-
     if (action === 'hide') {
-      // Fetch section JSON to get block positions
-      const sectionData = await this.getTemplateSections(themeId, templateName);
-      const section = sectionData?.sections?.[sectionId];
-
-      if (!section || !section.block_order) {
-        console.error(`[ThemeModifier] Could not fetch section data for ${sectionId}`);
-        // Fallback: store blocks without positions
-        const currentBlocks = updatedBlocks[sectionId] || [];
-        const newBlocks = [...new Set([...currentBlocks, ...blockIds])];
-        updatedBlocks[sectionId] = newBlocks;
-      } else {
-        // Map each block ID to its position in block_order
-        const blockOrder = section.block_order;
-        const blocksWithPositions = blockIds.map(blockId => {
-          const position = blockOrder.indexOf(blockId);
-          return {
-            blockId: blockId,
-            position: position >= 0 ? position : -1
-          };
-        });
-
-        // Merge with existing hidden blocks
-        const currentBlocks = updatedBlocks[sectionId] || [];
-        const existingBlockIds = currentBlocks.map(b => typeof b === 'string' ? b : b.blockId);
-
-        // Filter out blocks we're adding from existing list
-        const filteredCurrent = currentBlocks.filter(b => {
-          const id = typeof b === 'string' ? b : b.blockId;
-          return !blockIds.includes(id);
-        });
-
-        // Add new blocks with positions
-        updatedBlocks[sectionId] = [...filteredCurrent, ...blocksWithPositions];
-      }
-
-      console.log(`[ThemeModifier] ⚠️ HIDING BLOCKS in ${sectionId}:`, updatedBlocks[sectionId]);
+      return await this.hideBlocksInTheme(themeId, templateName, sectionId, blockIds);
     } else if (action === 'show') {
-      // Remove blocks from hidden list
-      if (updatedBlocks[sectionId]) {
-        updatedBlocks[sectionId] = updatedBlocks[sectionId].filter(b => {
-          const id = typeof b === 'string' ? b : b.blockId;
-          return !blockIds.includes(id);
-        });
-
-        // Remove section key if no blocks are hidden
-        if (updatedBlocks[sectionId].length === 0) {
-          delete updatedBlocks[sectionId];
-        }
-      }
-      console.log(`[ThemeModifier] Showing blocks in ${sectionId}:`, blockIds);
+      return await this.showBlocksInTheme(themeId, templateName, sectionId, blockIds);
     } else {
       throw new Error(`Invalid action: ${action}`);
     }
+  }
 
-    await this.updateHiddenBlocksMetafield(updatedBlocks);
+  /**
+   * Remove blocks from the theme template JSON and store their full data
+   * in the hidden_blocks metafield so they can be restored later.
+   */
+  async hideBlocksInTheme(themeId, templateName, sectionId, blockIds) {
+    console.log(`[ThemeModifier] ⚠️ Removing blocks from theme file: ${blockIds.join(', ')}`);
+
+    // 1. Read current template JSON
+    const fullPath = `templates/${templateName}`;
+    const templateFile = await this.client.getThemeFile(themeId, fullPath);
+    if (!templateFile) throw new Error(`Template not found: ${fullPath}`);
+
+    const templateData = JSON.parse(this.stripJsonComments(templateFile.body.content));
+    const section = templateData.sections?.[sectionId];
+    if (!section) throw new Error(`Section ${sectionId} not found in ${templateName}`);
+
+    // 2. Capture full block data before removing
+    const hiddenBlocks = await this.getHiddenBlocks();
+    const alreadyHidden = hiddenBlocks[sectionId] || [];
+    const newEntries = [];
+
+    for (const blockId of blockIds) {
+      // Skip if already removed from theme
+      if (alreadyHidden.some(b => (typeof b === 'string' ? b : b.blockId) === blockId)) {
+        console.log(`[ThemeModifier] Block ${blockId} already hidden, skipping`);
+        continue;
+      }
+
+      const blockData = section.blocks?.[blockId];
+      if (!blockData) {
+        console.warn(`[ThemeModifier] Block ${blockId} not found in section, skipping`);
+        continue;
+      }
+
+      const position = (section.block_order || []).indexOf(blockId);
+      newEntries.push({
+        blockId,
+        position,
+        type: blockData.type,
+        settings: blockData.settings || {},
+      });
+
+      // Remove from template
+      section.block_order = (section.block_order || []).filter(id => id !== blockId);
+      delete section.blocks[blockId];
+    }
+
+    if (newEntries.length === 0) {
+      return { success: true, message: 'No new blocks to hide', hiddenBlocks };
+    }
+
+    // 3. Write updated template back to theme
+    await this.client.updateThemeFiles(themeId, [{
+      filename: fullPath,
+      body: { value: JSON.stringify(templateData, null, 2) },
+    }]);
+    console.log(`[ThemeModifier] Template updated, removed ${newEntries.length} block(s)`);
+
+    // 4. Save block data to metafield for later restoration
+    hiddenBlocks[sectionId] = [...alreadyHidden, ...newEntries];
+    await this.updateHiddenBlocksMetafield(hiddenBlocks);
 
     return {
       success: true,
-      message: `Blocks ${action === 'hide' ? 'hidden' : 'shown'} successfully`,
-      hiddenBlocks: updatedBlocks,
+      message: `Blocks hidden successfully`,
+      hiddenBlocks,
+    };
+  }
+
+  /**
+   * Restore blocks to the theme template JSON using data saved in the
+   * hidden_blocks metafield, then remove them from the metafield.
+   */
+  async showBlocksInTheme(themeId, templateName, sectionId, blockIds) {
+    console.log(`[ThemeModifier] Restoring blocks to theme file: ${blockIds.join(', ')}`);
+
+    const hiddenBlocks = await this.getHiddenBlocks();
+    const sectionHidden = hiddenBlocks[sectionId] || [];
+
+    // Find the saved entries for the blocks we want to restore
+    const toRestore = sectionHidden.filter(b => {
+      const id = typeof b === 'string' ? b : b.blockId;
+      return blockIds.includes(id);
+    });
+
+    if (toRestore.length === 0) {
+      console.log(`[ThemeModifier] No hidden block data found for ${blockIds.join(', ')}`);
+      return { success: true, message: 'No blocks to restore', hiddenBlocks };
+    }
+
+    // 1. Read current template JSON
+    const fullPath = `templates/${templateName}`;
+    const templateFile = await this.client.getThemeFile(themeId, fullPath);
+    if (!templateFile) throw new Error(`Template not found: ${fullPath}`);
+
+    const templateData = JSON.parse(this.stripJsonComments(templateFile.body.content));
+    const section = templateData.sections?.[sectionId];
+    if (!section) throw new Error(`Section ${sectionId} not found in ${templateName}`);
+
+    if (!section.blocks) section.blocks = {};
+    if (!section.block_order) section.block_order = [];
+
+    // 2. Re-insert each block at its original position (sort by position ascending)
+    const sorted = [...toRestore].sort((a, b) => {
+      const posA = typeof a === 'object' ? a.position : 0;
+      const posB = typeof b === 'object' ? b.position : 0;
+      return posA - posB;
+    });
+
+    for (const entry of sorted) {
+      if (typeof entry === 'string') {
+        console.warn(`[ThemeModifier] Legacy string entry ${entry} - cannot restore without block data`);
+        continue;
+      }
+
+      const { blockId, position, type, settings } = entry;
+
+      // Re-add block data
+      section.blocks[blockId] = { type, settings };
+
+      // Re-insert at original position (clamped to current length)
+      const insertAt = Math.min(position, section.block_order.length);
+      section.block_order.splice(insertAt, 0, blockId);
+      console.log(`[ThemeModifier] Restored block ${blockId} at position ${insertAt}`);
+    }
+
+    // 3. Write updated template back to theme
+    await this.client.updateThemeFiles(themeId, [{
+      filename: fullPath,
+      body: { value: JSON.stringify(templateData, null, 2) },
+    }]);
+    console.log(`[ThemeModifier] Template updated, restored ${toRestore.length} block(s)`);
+
+    // 4. Remove restored blocks from metafield
+    const remaining = sectionHidden.filter(b => {
+      const id = typeof b === 'string' ? b : b.blockId;
+      return !blockIds.includes(id);
+    });
+
+    if (remaining.length === 0) {
+      delete hiddenBlocks[sectionId];
+    } else {
+      hiddenBlocks[sectionId] = remaining;
+    }
+    await this.updateHiddenBlocksMetafield(hiddenBlocks);
+
+    return {
+      success: true,
+      message: 'Blocks restored successfully',
+      hiddenBlocks,
     };
   }
 
