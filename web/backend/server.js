@@ -129,21 +129,47 @@ if (process.env.NODE_ENV === 'production') {
     res.sendFile('web/frontend/dist/index.html', { root: '.' });
   });
 } else {
-  // Development: proxy to Vite dev server
-  app.use(
-    '/',
-    createProxyMiddleware({
-      target: 'http://localhost:5173',
-      changeOrigin: true,
-      ws: true, // Proxy websockets for HMR
-      // Don't proxy API routes
-      filter: (pathname) => {
-        return !pathname.startsWith('/api') &&
-               !pathname.startsWith('/auth') &&
-               pathname !== '/health';
-      },
-    })
-  );
+  // Development: serve simple test page
+  app.get('/', (req, res) => {
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>App Test Page</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              max-width: 800px;
+              margin: 50px auto;
+              padding: 20px;
+              background: #f5f5f5;
+            }
+            .card {
+              background: white;
+              padding: 30px;
+              border-radius: 8px;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            h1 { color: #008060; }
+            .status { color: #2e7d32; font-weight: bold; }
+          </style>
+        </head>
+        <body>
+          <div class="card">
+            <h1>✅ App Backend is Working!</h1>
+            <p class="status">Status: Connected</p>
+            <p>If you can see this page, it means:</p>
+            <ul>
+              <li>✅ ngrok tunnel is working</li>
+              <li>✅ Backend server is running</li>
+              <li>✅ Network connectivity is good</li>
+            </ul>
+            <p>Timestamp: ${new Date().toISOString()}</p>
+          </div>
+        </body>
+      </html>
+    `);
+  });
 }
 
 // Error handling middleware
