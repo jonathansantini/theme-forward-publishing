@@ -85,100 +85,49 @@ router.post('/', verifyAuth, async (req, res) => {
       });
     }
 
-    // Handle new startTime/endTime format by creating TWO schedules
-    if (req.body.startTime && req.body.endTime) {
+    // IMPORTANT: Always create schedules as drafts (finalized=false)
+    // This prevents forward publishing from happening until user explicitly finalizes
+    const scheduleData = {
+      ...req.body,
+      finalized: false, // Force draft state
+      startExecuted: false, // Track if start action has been executed
+      endExecuted: false, // Track if end action has been executed
+    };
+
+    // For new format with startTime/endTime, also set executeAt to startTime for compatibility
+    if (req.body.startTime) {
+      scheduleData.executeAt = req.body.startTime;
       console.log(`[Create] Creating schedule window from ${req.body.startTime} to ${req.body.endTime}`);
-
-      // Create START schedule (applies the action)
-      const startSchedule = {
-        ...req.body,
-        executeAt: req.body.startTime,
-        finalized: false,
-        name: req.body.name || `${req.body.action} ${req.body.sectionId}`,
-      };
-      delete startSchedule.startTime;
-      delete startSchedule.endTime;
-
-      // Create END schedule (reverses the action)
-      const reverseAction = req.body.action === 'hide' ? 'show' : 'hide';
-      const endSchedule = {
-        ...req.body,
-        action: reverseAction,
-        executeAt: req.body.endTime,
-        finalized: false,
-        name: req.body.name ? `${req.body.name} (end)` : `${reverseAction} ${req.body.sectionId}`,
-      };
-      delete endSchedule.startTime;
-      delete endSchedule.endTime;
-
-      // CLEANUP: For 'show' schedules, ensure the section/blocks are visible when created
-      if (req.body.action === 'show') {
-        const blockIds = req.body.blockIds || [];
-        const target = blockIds.length > 0 ? `blocks ${blockIds.join(', ')}` : `section`;
-        console.log(`[Create] Ensuring ${target} in ${req.body.sectionId} is visible for new 'show' schedule`);
-
-        try {
-          await modifier.modifyTemplateVisibility(
-            req.body.themeId,
-            req.body.templateName,
-            req.body.sectionId,
-            'show',
-            blockIds
-          );
-          console.log(`[Create] ${target} cleanup complete`);
-        } catch (cleanupError) {
-          console.error('[Create] Error during cleanup:', cleanupError);
-        }
-      }
-
-      // Create both schedules
-      const createdStartSchedule = await storage.createSchedule(startSchedule);
-      const createdEndSchedule = await storage.createSchedule(endSchedule);
-
-      console.log(`[Create] Created schedule pair: ${createdStartSchedule.id} (start) and ${createdEndSchedule.id} (end)`);
-
-      res.status(201).json({
-        schedule: createdStartSchedule,
-        endSchedule: createdEndSchedule,
-        isSchedulePair: true,
-      });
     } else {
-      // IMPORTANT: Always create schedules as drafts (finalized=false)
-      // This prevents forward publishing from happening until user explicitly finalizes
-      const scheduleData = {
-        ...req.body,
-        finalized: false, // Force draft state
-      };
-
       console.log(`[Create] Creating schedule in draft state (finalized=false)`);
-
-      // CLEANUP: For 'show' schedules, ensure the section/blocks are visible when created
-      // This clears any leftover hidden state from previous schedules
-      if (req.body.action === 'show') {
-        const blockIds = req.body.blockIds || [];
-        const target = blockIds.length > 0 ? `blocks ${blockIds.join(', ')}` : `section`;
-        console.log(`[Create] Ensuring ${target} in ${req.body.sectionId} is visible for new 'show' schedule`);
-
-        try {
-          await modifier.modifyTemplateVisibility(
-            req.body.themeId,
-            req.body.templateName,
-            req.body.sectionId,
-            'show',
-            blockIds
-          );
-          console.log(`[Create] ${target} cleanup complete`);
-        } catch (cleanupError) {
-          console.error('[Create] Error during cleanup:', cleanupError);
-          // Continue with schedule creation even if cleanup fails
-        }
-      }
-
-      // Create schedule
-      const schedule = await storage.createSchedule(scheduleData);
-
-      res.status(201).json({ schedule });
     }
+
+    // CLEANUP: For 'show' schedules, ensure the section/blocks are visible when created
+    // This clears any leftover hidden state from previous schedules
+    if (req.body.action === 'show') {
+      const blockIds = req.body.blockIds || [];
+      const target = blockIds.length > 0 ? `blocks ${blockIds.join(', ')}` : `section`;
+      console.log(`[Create] Ensuring ${target} in ${req.body.sectionId} is visible for new 'show' schedule`);
+
+      try {
+        await modifier.modifyTemplateVisibility(
+          req.body.themeId,
+          req.body.templateName,
+          req.body.sectionId,
+          'show',
+          blockIds
+        );
+        console.log(`[Create] ${target} cleanup complete`);
+      } catch (cleanupError) {
+        console.error('[Create] Error during cleanup:', cleanupError);
+        // Continue with schedule creation even if cleanup fails
+      }
+    }
+
+    // Create schedule
+    const schedule = await storage.createSchedule(scheduleData);
+
+    res.status(201).json({ schedule });
   } catch (error) {
     console.error('Create schedule error:', error);
     res.status(500).json({ error: error.message });

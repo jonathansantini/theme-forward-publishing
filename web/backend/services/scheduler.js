@@ -22,7 +22,59 @@ export class Scheduler {
   }
 
   /**
-   * Execute a single schedule
+   * Execute a schedule action without managing schedule state
+   * Used by processPendingSchedules for start/end time schedules
+   */
+  async executeScheduleAction(schedule, action) {
+    const blockIds = schedule.blockIds || [];
+    const target = blockIds.length > 0 ? `blocks ${blockIds.join(', ')} in` : '';
+    console.log(`Executing action: ${action} ${target} ${schedule.sectionId}`);
+
+    try {
+      // Execute the theme modification (section or blocks)
+      await this.modifier.modifyTemplateVisibility(
+        schedule.themeId,
+        schedule.templateName,
+        schedule.sectionId,
+        action,
+        blockIds
+      );
+
+      // Log successful execution
+      await this.storage.logExecution({
+        scheduleId: schedule.id,
+        success: true,
+        action: action,
+        sectionId: schedule.sectionId,
+        templateName: schedule.templateName,
+      });
+
+      return { success: true };
+    } catch (error) {
+      console.error(`Action execution failed:`, error);
+
+      // Update status to failed
+      await this.storage.updateSchedule(schedule.id, {
+        status: 'failed',
+        error: error.message,
+      });
+
+      // Log failed execution
+      await this.storage.logExecution({
+        scheduleId: schedule.id,
+        success: false,
+        action: action,
+        sectionId: schedule.sectionId,
+        templateName: schedule.templateName,
+        error: error.message,
+      });
+
+      throw error;
+    }
+  }
+
+  /**
+   * Execute a single schedule (legacy format with executeAt)
    */
   async executeSchedule(schedule) {
     const blockIds = schedule.blockIds || [];
@@ -157,37 +209,69 @@ export class Scheduler {
     const results = [];
 
     for (const schedule of pendingSchedules) {
-      const executeAt = moment(schedule.executeAt).tz(this.shopTimezone);
+      try {
+        // Handle new format with startTime/endTime
+        if (schedule.startTime && schedule.endTime) {
+          const startTime = moment(schedule.startTime).tz(this.shopTimezone);
+          const endTime = moment(schedule.endTime).tz(this.shopTimezone);
+          const startExecuted = schedule.startExecuted || false;
+          const endExecuted = schedule.endExecuted || false;
 
-      // Check if it's time to execute
-      if (now.isSameOrAfter(executeAt)) {
-        console.log(`Schedule ${schedule.id} is due for execution`);
-
-        try {
-          const result = await this.executeSchedule(schedule);
-          results.push({ scheduleId: schedule.id, ...result });
-        } catch (error) {
-          console.error(`[EXECUTION ERROR] Failed to execute schedule ${schedule.id}:`, error);
-          console.error(`[EXECUTION ERROR] Error details:`, {
-            message: error.message,
-            stack: error.stack,
-            scheduleId: schedule.id,
-            action: schedule.action,
-            sectionId: schedule.sectionId,
-          });
-
-          results.push({
-            scheduleId: schedule.id,
-            success: false,
-            error: error.message,
-          });
-
-          // Implement retry logic
-          try {
-            await this.retrySchedule(schedule, error);
-          } catch (retryError) {
-            console.error(`[RETRY ERROR] Failed to schedule retry for ${schedule.id}:`, retryError);
+          // Execute start action if it's time and not yet executed
+          if (now.isSameOrAfter(startTime) && !startExecuted) {
+            console.log(`Schedule ${schedule.id}: Executing START action (${schedule.action})`);
+            const result = await this.executeScheduleAction(schedule, schedule.action);
+            await this.storage.updateSchedule(schedule.id, {
+              startExecuted: true,
+              status: 'active',
+            });
+            results.push({ scheduleId: schedule.id, phase: 'start', ...result });
           }
+
+          // Execute end action (reverse) if it's time and not yet executed
+          if (now.isSameOrAfter(endTime) && !endExecuted) {
+            const reverseAction = schedule.action === 'hide' ? 'show' : 'hide';
+            console.log(`Schedule ${schedule.id}: Executing END action (${reverseAction})`);
+            const result = await this.executeScheduleAction(schedule, reverseAction);
+            await this.storage.updateSchedule(schedule.id, {
+              endExecuted: true,
+              status: 'completed',
+              lastRun: new Date().toISOString(),
+            });
+            results.push({ scheduleId: schedule.id, phase: 'end', ...result });
+          }
+        } else {
+          // Handle old format with single executeAt
+          const executeAt = moment(schedule.executeAt).tz(this.shopTimezone);
+
+          // Check if it's time to execute
+          if (now.isSameOrAfter(executeAt)) {
+            console.log(`Schedule ${schedule.id} is due for execution`);
+            const result = await this.executeSchedule(schedule);
+            results.push({ scheduleId: schedule.id, ...result });
+          }
+        }
+      } catch (error) {
+        console.error(`[EXECUTION ERROR] Failed to execute schedule ${schedule.id}:`, error);
+        console.error(`[EXECUTION ERROR] Error details:`, {
+          message: error.message,
+          stack: error.stack,
+          scheduleId: schedule.id,
+          action: schedule.action,
+          sectionId: schedule.sectionId,
+        });
+
+        results.push({
+          scheduleId: schedule.id,
+          success: false,
+          error: error.message,
+        });
+
+        // Implement retry logic
+        try {
+          await this.retrySchedule(schedule, error);
+        } catch (retryError) {
+          console.error(`[RETRY ERROR] Failed to schedule retry for ${schedule.id}:`, retryError);
         }
       }
     }

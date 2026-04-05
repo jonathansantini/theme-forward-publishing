@@ -18,7 +18,8 @@ function ScheduleForm({ initialData, onSubmit, onCancel, submitLabel = 'Create S
   const [formData, setFormData] = useState({
     name: initialData?.name || '',
     action: initialData?.action || 'hide',
-    startTime: initialData?.startTime || '',
+    // Support both new format (startTime/endTime) and legacy format (executeAt)
+    startTime: initialData?.startTime || initialData?.executeAt || '',
     endTime: initialData?.endTime || '',
     recurrenceEnabled: initialData?.recurrence?.enabled || false,
     recurrenceType: initialData?.recurrence?.type || 'daily',
