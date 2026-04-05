@@ -144,10 +144,13 @@ function Dashboard() {
                 renderItem={(schedule) => {
                   const {
                     id,
+                    name,
                     sectionId,
                     templateName,
                     action,
                     executeAt,
+                    startTime,
+                    endTime,
                     status,
                     recurrence,
                     finalized,
@@ -159,6 +162,20 @@ function Dashboard() {
                   const target = isBlockLevel
                     ? `${blockIds.length} block${blockIds.length !== 1 ? 's' : ''} in ${sectionId}`
                     : sectionId;
+
+                  // Format time display based on whether we have start/end times or just executeAt
+                  let timeDisplay;
+                  if (startTime && endTime) {
+                    // New format: show time range
+                    const startFormatted = formatDate(startTime);
+                    const endFormatted = formatDate(endTime);
+                    // Extract just the time part from endFormatted (everything after the last comma)
+                    const endTimeOnly = endFormatted.split(', ').pop();
+                    timeDisplay = `${startFormatted} - ${endTimeOnly}`;
+                  } else {
+                    // Legacy format: show single time with relative
+                    timeDisplay = `${formatDate(executeAt)} (${getRelativeTime(executeAt)})`;
+                  }
 
                   return (
                     <ResourceItem
@@ -174,7 +191,7 @@ function Dashboard() {
                       >
                         <div style={{ flex: 1 }}>
                           <Text as="h3" variant="headingSm" fontWeight="semibold">
-                            {action === 'hide' ? 'Hide' : 'Show'} {target}
+                            {name || `${action === 'hide' ? 'Hide' : 'Show'} ${target}`}
                           </Text>
                           <Text as="p" variant="bodySm" color="subdued">
                             Template: {templateName}
@@ -185,7 +202,7 @@ function Dashboard() {
                             </Text>
                           )}
                           <Text as="p" variant="bodySm">
-                            {formatDate(executeAt)} ({getRelativeTime(executeAt)})
+                            {timeDisplay}
                           </Text>
                           {recurrence?.enabled && (
                             <Text as="p" variant="bodySm" color="subdued">
