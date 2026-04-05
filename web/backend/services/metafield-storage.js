@@ -77,7 +77,7 @@ export class MetafieldStorage {
     }
 
     // System fields that can always be updated, even on finalized schedules
-    const systemFields = ['status', 'lastRun', 'retryCount', 'executeAt', 'lastError', 'error', 'finalized'];
+    const systemFields = ['status', 'lastRun', 'retryCount', 'executeAt', 'lastError', 'error', 'finalized', 'startExecuted', 'endExecuted'];
     const isSystemUpdate = Object.keys(updates).every(key => systemFields.includes(key));
 
     // Prevent editing finalized schedules (except for system updates)
