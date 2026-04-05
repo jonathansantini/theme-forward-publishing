@@ -1,5 +1,5 @@
 import React from 'react';
-import { Banner, Page, Layout, TextContainer, Heading } from '@shopify/polaris';
+import { Banner, Page, Layout, TextContainer, Text } from '@shopify/polaris';
 
 /**
  * Error Boundary Component
@@ -78,7 +78,7 @@ class ErrorBoundary extends React.Component {
               {process.env.NODE_ENV === 'development' && this.state.error && (
                 <div style={{ marginTop: '20px' }}>
                   <TextContainer>
-                    <Heading>Error Details (Development Mode)</Heading>
+                    <Text variant="headingMd" as="h2">Error Details (Development Mode)</Text>
                     <div
                       style={{
                         background: '#f4f4f4',
