@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Page,
@@ -12,6 +13,7 @@ import {
   Badge,
   ButtonGroup,
   Button,
+  Tabs,
 } from '@shopify/polaris';
 import { useSchedules } from '../hooks/useSchedules';
 import { useTimezone } from '../hooks/useTimezone';
@@ -21,6 +23,7 @@ function Dashboard() {
   const { schedules, loading, error, deleteSchedule, finalizeSchedule, unpublishSchedule } =
     useSchedules();
   const { formatDate, getRelativeTime } = useTimezone();
+  const [selectedTab, setSelectedTab] = useState(0);
 
   const handleCreateSchedule = () => {
     navigate('/schedules/new');
@@ -124,6 +127,18 @@ function Dashboard() {
     </EmptyState>
   );
 
+  // Filter schedules based on selected tab
+  const tabs = [
+    { id: 'all', content: 'All', filter: () => true },
+    { id: 'active', content: 'Active', filter: (s) => s.status === 'active' },
+    { id: 'pending', content: 'Pending', filter: (s) => s.status === 'pending' },
+    { id: 'completed', content: 'Completed', filter: (s) => s.status === 'completed' },
+  ];
+
+  const filteredSchedules = schedules
+    .filter(tabs[selectedTab].filter)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // Newest first
+
   return (
     <Page
       title="Section Scheduler"
@@ -138,9 +153,15 @@ function Dashboard() {
             <Card>{emptyStateMarkup}</Card>
           ) : (
             <Card>
-              <ResourceList
-                resourceName={{ singular: 'schedule', plural: 'schedules' }}
-                items={schedules}
+              <Tabs
+                tabs={tabs}
+                selected={selectedTab}
+                onSelect={setSelectedTab}
+              />
+              <div style={{ marginTop: '16px' }}>
+                <ResourceList
+                  resourceName={{ singular: 'schedule', plural: 'schedules' }}
+                  items={filteredSchedules}
                 renderItem={(schedule) => {
                   const {
                     id,
@@ -190,9 +211,14 @@ function Dashboard() {
                         }}
                       >
                         <div style={{ flex: 1 }}>
-                          <Text as="h3" variant="headingSm" fontWeight="semibold">
-                            {name || `${action === 'hide' ? 'Hide' : 'Show'} ${target}`}
-                          </Text>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Text as="h3" variant="headingSm" fontWeight="semibold">
+                              {name || `${action === 'hide' ? 'Hide' : 'Show'} ${target}`}
+                            </Text>
+                            {status === 'active' && (
+                              <Badge status="attention">Active Now</Badge>
+                            )}
+                          </div>
                           <Text as="p" variant="bodySm" color="subdued">
                             Template: {templateName}
                           </Text>
@@ -273,6 +299,7 @@ function Dashboard() {
                   );
                 }}
               />
+              </div>
             </Card>
           )}
         </Layout.Section>
