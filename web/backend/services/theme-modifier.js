@@ -19,9 +19,27 @@ export class ThemeModifier {
     );
 
     try {
-      // If blockIds provided, modify block visibility instead of section
+      // Use metafield approach for both sections and blocks
+      // Direct theme file modification requires special API permissions
+
       if (blockIds && blockIds.length > 0) {
-        return await this.modifyBlockVisibility(themeId, templateName, sectionId, blockIds, action);
+        // Handle block visibility via metafield
+        const hiddenBlocks = await this.getHiddenBlocks();
+        let updatedBlocks;
+
+        if (action === 'hide') {
+          updatedBlocks = await this.hideBlockViaMetafield(sectionId, blockIds, hiddenBlocks);
+        } else if (action === 'show') {
+          updatedBlocks = await this.showBlockViaMetafield(sectionId, blockIds, hiddenBlocks);
+        } else {
+          throw new Error(`Invalid action: ${action}`);
+        }
+
+        await this.updateHiddenBlocksMetafield(updatedBlocks);
+        await this.logModification(themeId, templateName, sectionId, action, true, blockIds);
+
+        console.log(`[ThemeModifier] Successfully ${action} blocks in section ${sectionId}`);
+        return { success: true, hiddenBlocks: updatedBlocks };
       }
 
       // Otherwise, modify section visibility as before
@@ -371,6 +389,49 @@ export class ThemeModifier {
       console.log(`[ThemeModifier] Removing ${sectionId} from hidden sections`);
     }
 
+    return updated;
+  }
+
+  /**
+   * Hide blocks via metafield (CSS/JS approach)
+   */
+  async hideBlockViaMetafield(sectionId, blockIds, currentHiddenBlocks) {
+    const updated = { ...currentHiddenBlocks };
+
+    if (!updated[sectionId]) {
+      updated[sectionId] = [];
+    }
+
+    for (const blockId of blockIds) {
+      if (!updated[sectionId].includes(blockId)) {
+        updated[sectionId].push(blockId);
+        console.log(`[ThemeModifier] Added block ${blockId} to hidden blocks in section ${sectionId}`);
+      } else {
+        console.log(`[ThemeModifier] Block ${blockId} already hidden in section ${sectionId}`);
+      }
+    }
+
+    return updated;
+  }
+
+  /**
+   * Show blocks by removing them from the hidden blocks metafield
+   */
+  async showBlockViaMetafield(sectionId, blockIds, currentHiddenBlocks) {
+    const updated = { ...currentHiddenBlocks };
+
+    if (!updated[sectionId]) {
+      console.log(`[ThemeModifier] No hidden blocks found for section ${sectionId}`);
+      return updated;
+    }
+
+    updated[sectionId] = updated[sectionId].filter(id => !blockIds.includes(id));
+
+    if (updated[sectionId].length === 0) {
+      delete updated[sectionId];
+    }
+
+    console.log(`[ThemeModifier] Removed blocks ${blockIds.join(', ')} from section ${sectionId}`);
     return updated;
   }
 

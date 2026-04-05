@@ -66,26 +66,28 @@ router.get('/visibility.js', async (req, res) => {
     // Use the first session (in production, you'd want to handle this better)
     const session = sessions[0];
 
-    // Get hidden sections from metafield
-    // (blocks are now handled directly in the theme template, not via JS)
+    // Get hidden sections and blocks from metafields
     const graphqlClient = new ShopifyGraphQLClient(session);
     const hiddenSections = await getHiddenSections(graphqlClient);
+    const hiddenBlocks = await getHiddenBlocks(graphqlClient);
 
     console.log('[Proxy] Hidden sections:', hiddenSections);
+    console.log('[Proxy] Hidden blocks:', hiddenBlocks);
 
-    if (!hiddenSections || hiddenSections.length === 0) {
+    if ((!hiddenSections || hiddenSections.length === 0) &&
+        (!hiddenBlocks || Object.keys(hiddenBlocks).length === 0)) {
       return res.status(200).type('text/javascript').send(
-        '// No sections to hide'
+        '// No sections or blocks to hide'
       );
     }
 
     // Generate response based on mode
     let response;
     if (mode === 'css') {
-      response = generateCSS(hiddenSections);
+      response = generateCSS(hiddenSections, hiddenBlocks);
       res.type('text/css');
     } else {
-      response = generateJavaScript(hiddenSections);
+      response = generateJavaScript(hiddenSections, hiddenBlocks);
       res.type('text/javascript');
     }
 
@@ -150,11 +152,47 @@ async function getHiddenSections(graphqlClient) {
   }
 }
 
+/**
+ * Helper: Get hidden blocks from shop metafield
+ */
+async function getHiddenBlocks(graphqlClient) {
+  try {
+    const shopInfo = await graphqlClient.getShopInfo();
+
+    const query = `
+      query getHiddenBlocks($ownerId: ID!) {
+        node(id: $ownerId) {
+          ... on Shop {
+            metafield(namespace: "app_scheduler", key: "hidden_blocks") {
+              value
+            }
+          }
+        }
+      }
+    `;
+
+    const response = await graphqlClient.query(query, {
+      ownerId: shopInfo.id,
+    });
+
+    const metafieldValue = response?.node?.metafield?.value;
+
+    if (!metafieldValue) {
+      return {};
+    }
+
+    return JSON.parse(metafieldValue);
+  } catch (error) {
+    console.error('[Proxy] Error getting hidden blocks:', error);
+    return {};
+  }
+}
+
 
 /**
- * Helper: Generate JavaScript to remove sections from DOM
+ * Helper: Generate JavaScript to remove sections and blocks from DOM
  */
-function generateJavaScript(hiddenSections) {
+function generateJavaScript(hiddenSections, hiddenBlocks) {
   const sectionsList = hiddenSections || [];
 
   return `/**
