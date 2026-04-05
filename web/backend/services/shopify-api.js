@@ -197,6 +197,9 @@ export class ShopifyGraphQLClient {
 
         const getAsset = await getResponse.json();
         console.log('[updateThemeFiles] Asset exists, current size:', getAsset?.asset?.value?.length || 0);
+        console.log('[updateThemeFiles] Asset key from GET:', getAsset?.asset?.key);
+        console.log('[updateThemeFiles] Requested filename:', file.filename);
+        console.log('[updateThemeFiles] Keys match:', getAsset?.asset?.key === file.filename);
 
         // Now try to PUT the updated asset using the configured API version
         const putUrl = `https://${this.session.shop}/admin/api/${process.env.SHOPIFY_API_VERSION || API_VERSION}/themes/${numericThemeId}/assets.json`;
