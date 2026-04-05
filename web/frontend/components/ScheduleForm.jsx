@@ -16,8 +16,10 @@ function ScheduleForm({ initialData, onSubmit, onCancel, submitLabel = 'Create S
   const { shopTimezone, formatDate } = useTimezone();
 
   const [formData, setFormData] = useState({
+    name: initialData?.name || '',
     action: initialData?.action || 'hide',
-    executeAt: initialData?.executeAt || '',
+    startTime: initialData?.startTime || '',
+    endTime: initialData?.endTime || '',
     recurrenceEnabled: initialData?.recurrence?.enabled || false,
     recurrenceType: initialData?.recurrence?.type || 'daily',
     recurrenceDayOfWeek: initialData?.recurrence?.dayOfWeek || 0,
@@ -43,14 +45,26 @@ function ScheduleForm({ initialData, onSubmit, onCancel, submitLabel = 'Create S
   const validate = () => {
     const newErrors = {};
 
-    if (!formData.executeAt) {
-      newErrors.executeAt = 'Execution date and time is required';
+    if (!formData.startTime) {
+      newErrors.startTime = 'Start date and time is required';
     } else {
-      const executeDate = new Date(formData.executeAt);
-      if (isNaN(executeDate.getTime())) {
-        newErrors.executeAt = 'Invalid date format';
-      } else if (executeDate <= new Date()) {
-        newErrors.executeAt = 'Execution time must be in the future';
+      const startDate = new Date(formData.startTime);
+      if (isNaN(startDate.getTime())) {
+        newErrors.startTime = 'Invalid date format';
+      }
+    }
+
+    if (!formData.endTime) {
+      newErrors.endTime = 'End date and time is required';
+    } else {
+      const endDate = new Date(formData.endTime);
+      if (isNaN(endDate.getTime())) {
+        newErrors.endTime = 'Invalid date format';
+      } else if (formData.startTime) {
+        const startDate = new Date(formData.startTime);
+        if (endDate <= startDate) {
+          newErrors.endTime = 'End time must be after start time';
+        }
       }
     }
 
@@ -91,8 +105,10 @@ function ScheduleForm({ initialData, onSubmit, onCancel, submitLabel = 'Create S
 
     try {
       const scheduleData = {
+        name: formData.name,
         action: formData.action,
-        executeAt: formData.executeAt,
+        startTime: formData.startTime,
+        endTime: formData.endTime,
         recurrence: formData.recurrenceEnabled
           ? {
               enabled: true,
@@ -147,6 +163,14 @@ function ScheduleForm({ initialData, onSubmit, onCancel, submitLabel = 'Create S
           <p>All times will be scheduled according to your store's timezone</p>
         </Banner>
 
+        <TextField
+          label="Schedule Name (optional)"
+          value={formData.name}
+          onChange={handleChange('name')}
+          placeholder="e.g., Hide banner during maintenance"
+          helpText="Give this schedule a memorable name"
+        />
+
         <Select
           label="Action"
           options={actionOptions}
@@ -156,12 +180,21 @@ function ScheduleForm({ initialData, onSubmit, onCancel, submitLabel = 'Create S
         />
 
         <TextField
-          label="Execution Date & Time"
+          label="Start Date & Time"
           type="datetime-local"
-          value={formData.executeAt}
-          onChange={handleChange('executeAt')}
-          error={errors.executeAt}
-          helpText="When should this schedule execute?"
+          value={formData.startTime}
+          onChange={handleChange('startTime')}
+          error={errors.startTime}
+          helpText="When should this action start?"
+        />
+
+        <TextField
+          label="End Date & Time"
+          type="datetime-local"
+          value={formData.endTime}
+          onChange={handleChange('endTime')}
+          error={errors.endTime}
+          helpText="When should this action end? (action will automatically reverse)"
         />
 
         <Checkbox

@@ -242,21 +242,42 @@ export class Scheduler {
     if (!scheduleData.templateName) errors.push('Template name is required');
     if (!scheduleData.sectionId) errors.push('Section ID is required');
     if (!scheduleData.action) errors.push('Action is required');
-    if (!scheduleData.executeAt) errors.push('Execution time is required');
+
+    // Support both old (executeAt) and new (startTime/endTime) formats
+    if (!scheduleData.executeAt && !scheduleData.startTime) {
+      errors.push('Start time is required');
+    }
+    if (scheduleData.startTime && !scheduleData.endTime) {
+      errors.push('End time is required when start time is provided');
+    }
 
     // Validate action
     if (!['show', 'hide'].includes(scheduleData.action)) {
       errors.push('Action must be either "show" or "hide"');
     }
 
-    // Validate execution time is in the future
-    const executeAt = moment(scheduleData.executeAt).tz(
-      this.shopTimezone || 'UTC'
-    );
+    // Validate times
     const now = moment().tz(this.shopTimezone || 'UTC');
 
-    if (executeAt.isSameOrBefore(now)) {
-      errors.push('Execution time must be in the future');
+    if (scheduleData.startTime && scheduleData.endTime) {
+      const startTime = moment(scheduleData.startTime).tz(this.shopTimezone || 'UTC');
+      const endTime = moment(scheduleData.endTime).tz(this.shopTimezone || 'UTC');
+
+      if (!startTime.isValid()) {
+        errors.push('Invalid start time format');
+      }
+      if (!endTime.isValid()) {
+        errors.push('Invalid end time format');
+      }
+      if (startTime.isValid() && endTime.isValid() && endTime.isSameOrBefore(startTime)) {
+        errors.push('End time must be after start time');
+      }
+    } else if (scheduleData.executeAt) {
+      // Legacy support for executeAt
+      const executeAt = moment(scheduleData.executeAt).tz(this.shopTimezone || 'UTC');
+      if (executeAt.isSameOrBefore(now)) {
+        errors.push('Execution time must be in the future');
+      }
     }
 
     // Validate section exists in template
