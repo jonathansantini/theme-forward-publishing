@@ -37,33 +37,26 @@ export class ShopifyGraphQLClient {
    */
   async query(queryString, variables = {}) {
     try {
-      const response = await this.client.query({
-        data: {
-          query: queryString,
-          variables,
-        },
+      // Updated for Shopify API v12+ - no longer wraps in 'data' object
+      const response = await this.client.request(queryString, {
+        variables,
       });
 
-      // Check for rate limiting
-      if (response.headers) {
-        const rateLimitHeader = typeof response.headers.get === 'function'
-          ? response.headers.get('X-Shopify-Shop-Api-Call-Limit')
-          : response.headers['X-Shopify-Shop-Api-Call-Limit'];
+      // Check for rate limiting using extensions.cost (v12+ API)
+      if (response.extensions?.cost) {
+        const { requestedQueryCost, actualQueryCost, throttleStatus } = response.extensions.cost;
 
-        if (rateLimitHeader) {
-          const [used, total] = rateLimitHeader.split('/');
+        console.log(`API Cost: ${actualQueryCost} (max per call: ${throttleStatus?.maximumAvailable || 'N/A'})`);
 
-          console.log(`API Rate Limit: ${used}/${total}`);
-
-          // If we're close to the limit, wait before next request
-          if (parseInt(used) / parseInt(total) > 0.8) {
-            console.warn('Approaching rate limit, implementing delay...');
-            await this.sleep(1000);
-          }
+        // If approaching rate limit, add delay
+        if (throttleStatus && throttleStatus.currentlyAvailable < throttleStatus.maximumAvailable * 0.2) {
+          console.warn('Approaching rate limit, implementing delay...');
+          await this.sleep(1000);
         }
       }
 
-      return response.body;
+      // In API v12+, response is { data, extensions } - no .body wrapper
+      return response.data;
     } catch (error) {
       console.error('GraphQL query error:', error);
 
