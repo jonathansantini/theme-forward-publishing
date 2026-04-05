@@ -96,7 +96,7 @@ export class ShopifyGraphQLClient {
     `;
 
     const response = await this.query(query, { themeId });
-    return response.data.theme;
+    return response.theme;
   }
 
   /**
@@ -119,7 +119,7 @@ export class ShopifyGraphQLClient {
     `;
 
     const response = await this.query(query, { themeId });
-    return response.data.theme;
+    return response.theme;
   }
 
   /**
@@ -146,7 +146,7 @@ export class ShopifyGraphQLClient {
     `;
 
     const response = await this.query(query, { themeId });
-    const files = response.data.theme.files.nodes;
+    const files = response.theme.files.nodes;
     const matchingFile = files.find(f => f.filename === filename);
     return matchingFile || null;
   }
@@ -263,9 +263,9 @@ export class ShopifyGraphQLClient {
     `;
 
     const response = await this.query(query);
-    console.log('[DEBUG] Themes query response:', JSON.stringify(response.data, null, 2));
+    console.log('[DEBUG] Themes query response:', JSON.stringify(response, null, 2));
 
-    const themes = response.data.themes.nodes;
+    const themes = response.themes.nodes;
     console.log(`[DEBUG] Found ${themes.length} theme(s):`, themes.map(t => ({ name: t.name, role: t.role })));
 
     // Find the main/published theme
@@ -301,7 +301,7 @@ export class ShopifyGraphQLClient {
     `;
 
     const response = await this.query(query, { namespace, key });
-    return response.data.shop.metafield;
+    return response.shop.metafield;
   }
 
   /**
@@ -328,13 +328,13 @@ export class ShopifyGraphQLClient {
 
     const response = await this.query(mutation, { metafields });
 
-    if (response.data.metafieldsSet.userErrors.length > 0) {
+    if (response.metafieldsSet.userErrors.length > 0) {
       throw new Error(
-        `Metafield update errors: ${JSON.stringify(response.data.metafieldsSet.userErrors)}`
+        `Metafield update errors: ${JSON.stringify(response.metafieldsSet.userErrors)}`
       );
     }
 
-    return response.data.metafieldsSet.metafields;
+    return response.metafieldsSet.metafields;
   }
 
   /**
@@ -354,7 +354,8 @@ export class ShopifyGraphQLClient {
     `;
 
     const response = await this.query(query);
-    return response.data.shop;
+    // query() now returns response.data directly (not response.body.data)
+    return response.shop;
   }
 
   /**
