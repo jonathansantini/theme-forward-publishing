@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Page, Layout, Banner, Spinner, Card, Text } from '@shopify/polaris';
 import ScheduleForm from '../components/ScheduleForm';
-import BlockPicker from '../components/BlockPicker';
 import { useSchedule, useSchedules } from '../hooks/useSchedules';
 
 function EditSchedule() {
@@ -11,31 +10,14 @@ function EditSchedule() {
   const { schedule, loading } = useSchedule(id);
   const { updateSchedule } = useSchedules();
 
-  const [selectedBlocks, setSelectedBlocks] = useState([]);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
-
-  // Initialize selected blocks from schedule data
-  useEffect(() => {
-    if (schedule && schedule.blockIds) {
-      setSelectedBlocks(schedule.blockIds);
-    }
-  }, [schedule]);
-
-  const handleBlocksChange = (blockIds) => {
-    setSelectedBlocks(blockIds);
-  };
 
   const handleSubmit = async (scheduleData) => {
     setError(null);
 
     try {
-      const fullScheduleData = {
-        ...scheduleData,
-        blockIds: selectedBlocks.length > 0 ? selectedBlocks : undefined,
-      };
-
-      await updateSchedule(id, fullScheduleData);
+      await updateSchedule(id, scheduleData);
 
       setSuccess(true);
 
@@ -140,23 +122,8 @@ function EditSchedule() {
               <Text as="p" variant="bodyMd">
                 <strong>Theme ID:</strong> {schedule.themeId}
               </Text>
-              {schedule.blockIds && schedule.blockIds.length > 0 && (
-                <Text as="p" variant="bodyMd">
-                  <strong>Blocks:</strong> {schedule.blockIds.join(', ')}
-                </Text>
-              )}
             </div>
           </Card>
-        </Layout.Section>
-
-        <Layout.Section>
-          <BlockPicker
-            themeId={schedule.themeId}
-            templateName={schedule.templateName}
-            sectionId={schedule.sectionId}
-            onBlocksChange={handleBlocksChange}
-            selectedBlockIds={selectedBlocks}
-          />
         </Layout.Section>
 
         <Layout.Section>

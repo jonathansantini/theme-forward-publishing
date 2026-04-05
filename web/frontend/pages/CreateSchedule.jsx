@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Page, Layout, Banner } from '@shopify/polaris';
 import SectionPicker from '../components/SectionPicker';
-import BlockPicker from '../components/BlockPicker';
 import ScheduleForm from '../components/ScheduleForm';
 import { useSchedules } from '../hooks/useSchedules';
 
@@ -16,18 +15,12 @@ function CreateSchedule() {
     sectionId: null,
   });
 
-  const [selectedBlocks, setSelectedBlocks] = useState([]);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
 
   const handleSectionSelect = (selection) => {
     setSelectedSection(selection);
-    setSelectedBlocks([]); // Reset blocks when section changes
     setError(null);
-  };
-
-  const handleBlocksChange = (blockIds) => {
-    setSelectedBlocks(blockIds);
   };
 
   const handleSubmit = async (scheduleData) => {
@@ -45,7 +38,6 @@ function CreateSchedule() {
         themeId: selectedSection.themeId,
         templateName: selectedSection.templateName,
         sectionId: selectedSection.sectionId,
-        blockIds: selectedBlocks.length > 0 ? selectedBlocks : undefined,
       };
 
       await createSchedule(fullScheduleData);
@@ -96,18 +88,6 @@ function CreateSchedule() {
             selectedSection={selectedSection.sectionId}
           />
         </Layout.Section>
-
-        {selectedSection.sectionId && (
-          <Layout.Section>
-            <BlockPicker
-              themeId={selectedSection.themeId}
-              templateName={selectedSection.templateName}
-              sectionId={selectedSection.sectionId}
-              onBlocksChange={handleBlocksChange}
-              selectedBlockIds={selectedBlocks}
-            />
-          </Layout.Section>
-        )}
 
         {selectedSection.sectionId && (
           <Layout.Section>
