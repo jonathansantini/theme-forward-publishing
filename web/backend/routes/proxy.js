@@ -194,17 +194,59 @@ async function getHiddenBlocks(graphqlClient) {
  */
 function generateJavaScript(hiddenSections, hiddenBlocks) {
   const sectionsList = hiddenSections || [];
+  const blocksMap = hiddenBlocks || {};
 
   return `/**
  * Section Scheduler - Dynamic Section & Block Visibility
  * Generated: ${new Date().toISOString()}
  * Hidden sections: ${sectionsList.join(', ')}
- * Hidden blocks: ${JSON.stringify(blocksList)}
+ * Hidden blocks: ${JSON.stringify(blocksMap)}
  */
 (function() {
   'use strict';
 
   var hiddenSections = ${JSON.stringify(sectionsList)};
+  var hiddenBlocks = ${JSON.stringify(blocksMap)};
+
+  console.log('[Section Scheduler Inline] removeBlocks called, hiddenBlocks:', hiddenBlocks);
+
+  // Function to remove blocks from sections
+  function removeBlocks() {
+    var removed = 0;
+
+    for (var sectionId in hiddenBlocks) {
+      var blockIds = hiddenBlocks[sectionId];
+      console.log('[Section Scheduler Inline] Processing section:', sectionId);
+
+      // Find the section container
+      var sectionContainer = document.querySelector('[id*="' + sectionId + '"]');
+      console.log('[Section Scheduler Inline] Section container found:', !!sectionContainer);
+
+      if (sectionContainer) {
+        blockIds.forEach(function(blockId) {
+          // Try multiple selectors for blocks
+          var blockSelectors = [
+            '[id*="' + blockId + '"]',
+            '[data-block-id="' + blockId + '"]',
+            '.' + blockId
+          ];
+
+          blockSelectors.forEach(function(selector) {
+            var blocks = sectionContainer.querySelectorAll(selector);
+            blocks.forEach(function(block) {
+              block.remove();
+              removed++;
+              console.log('[Section Scheduler Inline] Removed block:', blockId);
+            });
+          });
+        });
+      }
+    }
+
+    if (removed > 0 && window.console) {
+      console.log('[Section Scheduler Inline] Removed ' + removed + ' block(s) from DOM');
+    }
+  }
 
   // Function to remove sections
   function removeSections() {
@@ -249,6 +291,7 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
   // Function to apply all hiding
   function applyVisibility() {
     removeSections();
+    removeBlocks();
   }
 
   // Try to remove sections/blocks as early as possible
