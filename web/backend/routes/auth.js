@@ -14,9 +14,9 @@ router.get('/auth', async (req, res) => {
       return res.status(400).json({ error: 'Missing shop parameter' });
     }
 
-    // Begin OAuth process
+    // Begin OAuth process (v12 API)
     await shopify.auth.begin({
-      shop: shopify.utils.sanitizeShop(shop, true),
+      shop: shopify.utils.sanitizeShop(shop),
       callbackPath: '/auth/callback',
       isOnline: true,
       rawRequest: req,
