@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Page, Layout, Banner, Spinner, Card, Text } from '@shopify/polaris';
+import { Page, Layout, Banner, Spinner, Card, Text, Button } from '@shopify/polaris';
+import SectionPicker from '../components/SectionPicker';
 import ScheduleForm from '../components/ScheduleForm';
 import { useSchedule, useSchedules } from '../hooks/useSchedules';
 
@@ -8,16 +9,50 @@ function EditSchedule() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { schedule, loading } = useSchedule(id);
-  const { updateSchedule } = useSchedules();
+  const { updateSchedule, deleteSchedule } = useSchedules();
 
+  const [selectedSection, setSelectedSection] = useState({
+    themeId: null,
+    templateName: null,
+    sectionId: null,
+  });
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+
+  // Initialize selected section from schedule data
+  useEffect(() => {
+    if (schedule) {
+      setSelectedSection({
+        themeId: schedule.themeId,
+        templateName: schedule.templateName,
+        sectionId: schedule.sectionId,
+      });
+    }
+  }, [schedule]);
+
+  const handleSectionSelect = (selection) => {
+    setSelectedSection(selection);
+    setError(null);
+  };
 
   const handleSubmit = async (scheduleData) => {
     setError(null);
 
+    // Validate section is selected
+    if (!selectedSection.themeId || !selectedSection.templateName || !selectedSection.sectionId) {
+      setError('Please select a theme, template, and section');
+      return;
+    }
+
     try {
-      await updateSchedule(id, scheduleData);
+      const fullScheduleData = {
+        ...scheduleData,
+        themeId: selectedSection.themeId,
+        templateName: selectedSection.templateName,
+        sectionId: selectedSection.sectionId,
+      };
+
+      await updateSchedule(id, fullScheduleData);
 
       setSuccess(true);
 
@@ -33,6 +68,18 @@ function EditSchedule() {
 
   const handleCancel = () => {
     navigate('/');
+  };
+
+  const handleDelete = async () => {
+    if (confirm('Are you sure you want to delete this schedule?')) {
+      try {
+        await deleteSchedule(id);
+        navigate('/');
+      } catch (err) {
+        console.error('Delete schedule error:', err);
+        setError(err.response?.data?.error || err.message || 'Failed to delete schedule');
+      }
+    }
   };
 
   if (loading) {
@@ -108,32 +155,38 @@ function EditSchedule() {
         )}
 
         <Layout.Section>
-          <Card>
-            <Text as="h2" variant="headingMd">
-              Schedule Info
-            </Text>
-            <div style={{ marginTop: '16px' }}>
-              <Text as="p" variant="bodyMd">
-                <strong>Section:</strong> {schedule.sectionId}
-              </Text>
-              <Text as="p" variant="bodyMd">
-                <strong>Template:</strong> {schedule.templateName}
-              </Text>
-              <Text as="p" variant="bodyMd">
-                <strong>Theme ID:</strong> {schedule.themeId}
-              </Text>
-            </div>
-          </Card>
-        </Layout.Section>
-
-        <Layout.Section>
-          <ScheduleForm
-            initialData={schedule}
-            onSubmit={handleSubmit}
-            onCancel={handleCancel}
-            submitLabel="Update Schedule"
+          <SectionPicker
+            onSelect={handleSectionSelect}
+            selectedThemeId={selectedSection.themeId}
+            selectedTemplate={selectedSection.templateName}
+            selectedSection={selectedSection.sectionId}
           />
         </Layout.Section>
+
+        {selectedSection.sectionId && (
+          <Layout.Section>
+            <ScheduleForm
+              initialData={schedule}
+              onSubmit={handleSubmit}
+              onCancel={handleCancel}
+              submitLabel="Update Schedule"
+            />
+          </Layout.Section>
+        )}
+
+        {selectedSection.sectionId && (
+          <Layout.Section>
+            <Card>
+              <Button
+                tone="critical"
+                onClick={handleDelete}
+                fullWidth
+              >
+                Delete Schedule
+              </Button>
+            </Card>
+          </Layout.Section>
+        )}
       </Layout>
     </Page>
   );

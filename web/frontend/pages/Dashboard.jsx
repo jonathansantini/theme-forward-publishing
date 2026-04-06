@@ -190,9 +190,20 @@ function Dashboard() {
                     // New format: show time range
                     const startFormatted = formatDate(startTime);
                     const endFormatted = formatDate(endTime);
-                    // Extract just the time part from endFormatted (everything after the last comma)
-                    const endTimeOnly = endFormatted.split(', ').pop();
-                    timeDisplay = `${startFormatted} - ${endTimeOnly}`;
+
+                    // Check if dates are on the same day
+                    const startDate = new Date(startTime);
+                    const endDate = new Date(endTime);
+                    const sameDay = startDate.toDateString() === endDate.toDateString();
+
+                    if (sameDay) {
+                      // Same day: show full date for start, only time for end
+                      const endTimeOnly = endFormatted.split(', ').pop();
+                      timeDisplay = `${startFormatted} - ${endTimeOnly}`;
+                    } else {
+                      // Different days: show full date for both
+                      timeDisplay = `${startFormatted} - ${endFormatted}`;
+                    }
                   } else {
                     // Legacy format: show single time with relative
                     timeDisplay = `${formatDate(executeAt)} (${getRelativeTime(executeAt)})`;
@@ -215,8 +226,17 @@ function Dashboard() {
                             <Text as="h3" variant="headingSm" fontWeight="semibold">
                               {name || `${action === 'hide' ? 'Hide' : 'Show'} ${target}`}
                             </Text>
+                            <Badge tone={action === 'hide' ? 'info' : 'success'}>
+                              {action === 'hide' ? 'Hide' : 'Show'}
+                            </Badge>
                             {status === 'active' && (
                               <Badge status="attention">Active Now</Badge>
+                            )}
+                            {finalized && status === 'pending' && (
+                              <Badge status="info">Pending</Badge>
+                            )}
+                            {status === 'completed' && (
+                              <Badge status="success">Completed</Badge>
                             )}
                           </div>
                           <Text as="p" variant="bodySm" color="subdued">
