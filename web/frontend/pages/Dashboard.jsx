@@ -226,9 +226,6 @@ function Dashboard() {
                             <Text as="h3" variant="headingSm" fontWeight="semibold">
                               {name || `${action === 'hide' ? 'Hide' : 'Show'} ${target}`}
                             </Text>
-                            <Badge tone={action === 'hide' ? 'info' : 'success'}>
-                              {action === 'hide' ? 'Hide' : 'Show'}
-                            </Badge>
                             {status === 'active' && (
                               <Badge status="attention">Active Now</Badge>
                             )}
@@ -239,6 +236,9 @@ function Dashboard() {
                               <Badge status="success">Completed</Badge>
                             )}
                           </div>
+                          <Text as="p" variant="bodySm" color="subdued">
+                            Type: {action === 'hide' ? 'Hide' : 'Show'}
+                          </Text>
                           <Text as="p" variant="bodySm" color="subdued">
                             Template: {templateName}
                           </Text>

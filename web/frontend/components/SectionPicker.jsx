@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Card,
   FormLayout,
@@ -24,6 +24,16 @@ function SectionPicker({ onSelect, selectedThemeId, selectedTemplate, selectedSe
 
   const [localTemplate, setLocalTemplate] = useState(selectedTemplate || '');
   const [localSection, setLocalSection] = useState(selectedSection || '');
+
+  // Update local state when props change (e.g., when editing an existing schedule)
+  useEffect(() => {
+    if (selectedTemplate) {
+      setLocalTemplate(selectedTemplate);
+    }
+    if (selectedSection) {
+      setLocalSection(selectedSection);
+    }
+  }, [selectedTemplate, selectedSection]);
 
   const themeId = selectedThemeId || publishedTheme?.id;
 
