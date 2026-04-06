@@ -212,10 +212,19 @@ export class Scheduler {
       try {
         // Handle new format with startTime/endTime
         if (schedule.startTime && schedule.endTime) {
-          const startTime = moment(schedule.startTime).tz(this.shopTimezone);
-          const endTime = moment(schedule.endTime).tz(this.shopTimezone);
+          // Parse times as ALREADY being in the shop timezone (datetime-local sends local time)
+          const startTime = moment.tz(schedule.startTime, this.shopTimezone);
+          const endTime = moment.tz(schedule.endTime, this.shopTimezone);
           const startExecuted = schedule.startExecuted || false;
           const endExecuted = schedule.endExecuted || false;
+
+          console.log(`[Schedule ${schedule.id}] Checking times:`, {
+            now: now.format(),
+            startTime: startTime.format(),
+            endTime: endTime.format(),
+            startExecuted,
+            endExecuted,
+          });
 
           // Execute start action if it's time and not yet executed
           if (now.isSameOrAfter(startTime) && !startExecuted) {
