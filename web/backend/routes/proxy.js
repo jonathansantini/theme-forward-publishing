@@ -299,12 +299,15 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
 
   return `/**
  * Section Scheduler - Dynamic Section & Block Visibility
+ * Version: 2.0.0-customizer-badges
  * Generated: ${new Date().toISOString()}
  * Hidden sections: ${sectionsList.join(', ')}
  * Hidden blocks: ${JSON.stringify(blocksMap)}
  */
 (function() {
   'use strict';
+
+  console.log('[Section Scheduler] Script version: 2.0.0-customizer-badges');
 
   var hiddenSections = ${JSON.stringify(sectionsList)};
   var hiddenBlocks = ${JSON.stringify(blocksMap)};
