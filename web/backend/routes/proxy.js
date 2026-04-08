@@ -313,9 +313,55 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
 
   // Check if we're in the theme customizer
   function isInCustomizer() {
-    return window.location.search.includes('_ab=') ||
-           window.location.search.includes('key=') ||
-           window.parent !== window;
+    // Method 1: Check if we're in an iframe
+    var inIframe = window.parent !== window;
+
+    if (!inIframe) {
+      // Not in iframe, check current window URL
+      return window.location.search.includes('_ab=') ||
+             window.location.search.includes('key=');
+    }
+
+    // Method 2: If in iframe, try to check parent URL (might be blocked by CORS)
+    try {
+      var parentUrl = window.parent.location.href;
+      if (parentUrl.includes('admin/themes') ||
+          parentUrl.includes('customize') ||
+          parentUrl.includes('_ab=')) {
+        return true;
+      }
+    } catch (e) {
+      // Cross-origin, can't access parent URL
+      console.log('[Section Scheduler] Cannot access parent URL (CORS)');
+    }
+
+    // Method 3: Check iframe attributes via frameElement
+    try {
+      if (window.frameElement) {
+        var iframeId = window.frameElement.id || '';
+        var iframeClass = window.frameElement.className || '';
+        var iframeTitle = window.frameElement.title || '';
+
+        console.log('[Section Scheduler] Iframe detected:', {
+          id: iframeId,
+          class: iframeClass,
+          title: iframeTitle
+        });
+
+        // Shopify customizer uses specific iframe IDs/classes
+        if (iframeId.includes('storefront-iframe') ||
+            iframeClass.includes('StaticIframe') ||
+            iframeTitle.includes('preview')) {
+          return true;
+        }
+      }
+    } catch (e) {
+      console.log('[Section Scheduler] Cannot access frameElement:', e.message);
+    }
+
+    // Method 4: If we're in an iframe but can't determine the parent,
+    // assume we're in customizer (safe assumption for most cases)
+    return inIframe;
   }
 
   var inCustomizer = isInCustomizer();
