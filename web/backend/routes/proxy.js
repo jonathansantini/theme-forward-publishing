@@ -105,6 +105,68 @@ router.get('/visibility.js', async (req, res) => {
 });
 
 /**
+ * GET /proxy/schedules.json
+ * Returns schedules for customizer badges
+ * Query params:
+ *   - template: template name (e.g., "index.json")
+ */
+router.get('/schedules.json', async (req, res) => {
+  try {
+    const shop = req.headers['x-shopify-shop-domain'] ||
+                 req.headers['http_x_shopify_shop_domain'] ||
+                 req.query.shop;
+
+    console.log('[Proxy] schedules.json request from shop:', shop);
+
+    if (!shop) {
+      return res.status(400).json({ error: 'Shop domain not found' });
+    }
+
+    const template = req.query.template;
+    console.log('[Proxy] Fetching schedules for template:', template);
+
+    // Look up session for this shop
+    const sessions = await shopify.config.sessionStorage.findSessionsByShop(shop);
+
+    if (!sessions || sessions.length === 0) {
+      return res.json({ schedules: [] });
+    }
+
+    const session = sessions[0];
+    const graphqlClient = new ShopifyGraphQLClient(session);
+
+    // Get all schedules from metafield
+    const schedules = await getSchedules(graphqlClient);
+
+    // Filter by template if specified
+    let filteredSchedules = schedules;
+    if (template) {
+      filteredSchedules = schedules.filter(s => s.templateName === template);
+    }
+
+    // Map to customizer-friendly format
+    const customizerSchedules = filteredSchedules.map(s => ({
+      id: s.id,
+      sectionId: s.sectionId,
+      action: s.action,
+      status: s.status,
+      startTime: s.startTime,
+      endTime: s.endTime,
+      name: s.name,
+      finalized: s.finalized,
+    }));
+
+    // Set short cache
+    res.set('Cache-Control', 'public, max-age=30');
+    return res.json({ schedules: customizerSchedules });
+
+  } catch (error) {
+    console.error('[Proxy] Error in schedules.json:', error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * GET /proxy/health
  * Simple health check endpoint for the proxy
  */
@@ -188,6 +250,43 @@ async function getHiddenBlocks(graphqlClient) {
   }
 }
 
+
+/**
+ * Helper: Get all schedules from shop metafield
+ */
+async function getSchedules(graphqlClient) {
+  try {
+    const shopInfo = await graphqlClient.getShopInfo();
+
+    const query = `
+      query getSchedules($ownerId: ID!) {
+        node(id: $ownerId) {
+          ... on Shop {
+            metafield(namespace: "app_scheduler", key: "schedules") {
+              value
+            }
+          }
+        }
+      }
+    `;
+
+    const response = await graphqlClient.query(query, {
+      ownerId: shopInfo.id,
+    });
+
+    const metafieldValue = response?.node?.metafield?.value;
+
+    if (!metafieldValue) {
+      return [];
+    }
+
+    const data = JSON.parse(metafieldValue);
+    return data.schedules || [];
+  } catch (error) {
+    console.error('[Proxy] Error getting schedules:', error);
+    return [];
+  }
+}
 
 /**
  * Helper: Generate JavaScript to remove sections and blocks from DOM
@@ -301,6 +400,210 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
   } else {
     // Document already loaded, remove immediately
     applyVisibility();
+  }
+
+  // ===== CUSTOMIZER BADGES =====
+  // Show visual indicators in theme customizer for scheduled sections
+
+  function isInCustomizer() {
+    // Check if we're in the theme customizer
+    return window.location.search.includes('_ab=') ||
+           window.location.search.includes('key=') ||
+           window.parent !== window; // In iframe
+  }
+
+  function isAdmin() {
+    // Check if logged in as admin (Shopify sets _shopify_y cookie for admins)
+    return document.cookie.includes('_shopify_y=');
+  }
+
+  async function injectCustomizerBadges() {
+    if (!isInCustomizer() || !isAdmin()) {
+      console.log('[Section Scheduler] Not in customizer or not admin, skipping badges');
+      return;
+    }
+
+    console.log('[Section Scheduler] In customizer mode - injecting badges');
+
+    try {
+      // Get current template name from meta tag or URL
+      var templateMeta = document.querySelector('meta[name="shopify-template"]');
+      var template = templateMeta ? templateMeta.content : null;
+
+      if (!template) {
+        console.log('[Section Scheduler] Could not determine template name');
+        return;
+      }
+
+      // Fetch schedules for this template
+      var response = await fetch('/apps/scheduler/schedules.json?template=' + template);
+      var data = await response.json();
+      var schedules = data.schedules || [];
+
+      console.log('[Section Scheduler] Found ' + schedules.length + ' schedules for template:', template);
+
+      // Inject CSS for badges
+      injectBadgeStyles();
+
+      // Add badges to scheduled sections
+      schedules.forEach(function(schedule) {
+        addBadgeToSection(schedule);
+      });
+
+    } catch (error) {
+      console.error('[Section Scheduler] Error injecting customizer badges:', error);
+    }
+  }
+
+  function injectBadgeStyles() {
+    if (document.getElementById('section-scheduler-styles')) {
+      return; // Already injected
+    }
+
+    var style = document.createElement('style');
+    style.id = 'section-scheduler-styles';
+    style.textContent = \`
+      .section-scheduler-badge {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 12px 16px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-size: 14px;
+        font-weight: 600;
+        z-index: 9999;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .section-scheduler-badge.status-pending {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      }
+
+      .section-scheduler-badge.status-active {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      }
+
+      .section-scheduler-badge.status-completed {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      }
+
+      .section-scheduler-badge-icon {
+        margin-right: 8px;
+      }
+
+      .section-scheduler-badge-link {
+        color: white;
+        text-decoration: none;
+        padding: 4px 12px;
+        background: rgba(255,255,255,0.2);
+        border-radius: 4px;
+        font-size: 12px;
+        transition: background 0.2s;
+      }
+
+      .section-scheduler-badge-link:hover {
+        background: rgba(255,255,255,0.3);
+      }
+
+      .section-scheduler-overlay {
+        position: relative;
+      }
+
+      .section-scheduler-overlay.is-hidden {
+        opacity: 0.4;
+        pointer-events: none;
+      }
+    \`;
+    document.head.appendChild(style);
+  }
+
+  function addBadgeToSection(schedule) {
+    // Find section element
+    var sectionSelectors = [
+      '#shopify-section-' + schedule.sectionId,
+      '[id*="__' + schedule.sectionId + '"]',
+      '[id*="' + schedule.sectionId + '"]'
+    ];
+
+    var sectionElement = null;
+    for (var i = 0; i < sectionSelectors.length; i++) {
+      sectionElement = document.querySelector(sectionSelectors[i]);
+      if (sectionElement) break;
+    }
+
+    if (!sectionElement) {
+      console.log('[Section Scheduler] Section element not found for:', schedule.sectionId);
+      return;
+    }
+
+    // Don't add badge twice
+    if (sectionElement.querySelector('.section-scheduler-badge')) {
+      return;
+    }
+
+    // Create badge element
+    var badge = document.createElement('div');
+    badge.className = 'section-scheduler-badge status-' + schedule.status;
+
+    var icon = schedule.status === 'active' ? '🔴' :
+               schedule.status === 'pending' ? '⏰' : '✅';
+
+    var statusText = schedule.status === 'active' ? 'Active - ' + (schedule.action === 'hide' ? 'Hidden' : 'Shown') + ' by app' :
+                     schedule.status === 'pending' ? 'Scheduled to ' + schedule.action :
+                     'Completed';
+
+    var timeText = '';
+    if (schedule.startTime && schedule.endTime) {
+      var start = new Date(schedule.startTime).toLocaleString();
+      var end = new Date(schedule.endTime).toLocaleString();
+      timeText = start + ' - ' + end;
+    } else if (schedule.startTime) {
+      timeText = new Date(schedule.startTime).toLocaleString();
+    }
+
+    // Build app URL
+    var appUrl = '/admin/apps/section-scheduler-1'; // Will need to get actual app handle
+
+    badge.innerHTML = \`
+      <div>
+        <span class="section-scheduler-badge-icon">\${icon}</span>
+        <span>\${schedule.name || statusText}</span>
+        \${timeText ? '<div style="font-size: 12px; margin-top: 4px; opacity: 0.9;">' + timeText + '</div>' : ''}
+      </div>
+      <a href="\${appUrl}" target="_top" class="section-scheduler-badge-link">
+        Edit Schedule →
+      </a>
+    \`;
+
+    // Add overlay class to section
+    sectionElement.classList.add('section-scheduler-overlay');
+    if (schedule.status === 'active' && schedule.action === 'hide') {
+      sectionElement.classList.add('is-hidden');
+    }
+
+    // Make section position relative if needed
+    var computedStyle = window.getComputedStyle(sectionElement);
+    if (computedStyle.position === 'static') {
+      sectionElement.style.position = 'relative';
+    }
+
+    // Insert badge at the top of the section
+    sectionElement.insertBefore(badge, sectionElement.firstChild);
+  }
+
+  // Run customizer badge injection after DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', injectCustomizerBadges);
+  } else {
+    // Try immediately, but also retry after a short delay in case sections load dynamically
+    injectCustomizerBadges();
+    setTimeout(injectCustomizerBadges, 1000);
   }
 })();
 `;
