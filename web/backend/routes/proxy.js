@@ -309,6 +309,16 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
 
   console.log('[Section Scheduler Inline] removeBlocks called, hiddenBlocks:', hiddenBlocks);
 
+  // Check if we're in the theme customizer
+  function isInCustomizer() {
+    return window.location.search.includes('_ab=') ||
+           window.location.search.includes('key=') ||
+           window.parent !== window;
+  }
+
+  var inCustomizer = isInCustomizer();
+  console.log('[Section Scheduler] In customizer mode:', inCustomizer);
+
   // Function to remove blocks from sections
   function removeBlocks() {
     var removed = 0;
@@ -389,6 +399,11 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
 
   // Function to apply all hiding
   function applyVisibility() {
+    // Skip hiding in customizer - badges will show status instead
+    if (inCustomizer) {
+      console.log('[Section Scheduler] Skipping hide in customizer - badges will show status');
+      return;
+    }
     removeSections();
     removeBlocks();
   }
@@ -405,20 +420,13 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
   // ===== CUSTOMIZER BADGES =====
   // Show visual indicators in theme customizer for scheduled sections
 
-  function isInCustomizer() {
-    // Check if we're in the theme customizer
-    return window.location.search.includes('_ab=') ||
-           window.location.search.includes('key=') ||
-           window.parent !== window; // In iframe
-  }
-
   function isAdmin() {
     // Check if logged in as admin (Shopify sets _shopify_y cookie for admins)
     return document.cookie.includes('_shopify_y=');
   }
 
   async function injectCustomizerBadges() {
-    if (!isInCustomizer() || !isAdmin()) {
+    if (!inCustomizer || !isAdmin()) {
       console.log('[Section Scheduler] Not in customizer or not admin, skipping badges');
       return;
     }
