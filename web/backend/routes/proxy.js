@@ -32,6 +32,8 @@ router.use(validateProxyHmac);
  * Supports two modes via query param ?mode=js or ?mode=css
  * - js: Returns JavaScript that removes sections from DOM (default)
  * - css: Returns CSS that hides sections with display:none
+ *
+ * Cache buster: Add ?v=timestamp to force reload
  */
 router.get('/visibility.js', async (req, res) => {
   try {

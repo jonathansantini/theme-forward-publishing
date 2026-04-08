@@ -165,10 +165,10 @@
 
 {% elsif visibility_mode == 'css' %}
   {%- comment -%} CSS mode: Load as stylesheet from proxy {%- endcomment -%}
-  <link rel="stylesheet" href="/apps/scheduler/visibility.js?mode=css">
+  <link rel="stylesheet" href="/apps/scheduler/visibility.js?mode=css&v={{ 'now' | date: '%s' }}">
 {% else %}
   {%- comment -%} JS mode (default): Load as inline script from proxy {%- endcomment -%}
-  <script src="/apps/scheduler/visibility.js?mode=js" defer></script>
+  <script src="/apps/scheduler/visibility.js?mode=js&v={{ 'now' | date: '%s' }}" defer></script>
 {% endif %}
 
 {% comment %} Debug info - always visible for troubleshooting {% endcomment %}
