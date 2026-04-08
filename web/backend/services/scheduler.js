@@ -192,6 +192,80 @@ export class Scheduler {
   }
 
   /**
+   * Calculate next recurring window (start and end times) based on recurrence settings
+   */
+  calculateNextRecurringWindow(schedule) {
+    const { recurrence } = schedule;
+    const now = moment().tz(this.shopTimezone);
+
+    let nextStart, nextEnd;
+
+    switch (recurrence.type) {
+      case 'daily':
+        // Daily: start at recurrence.time, end at recurrence.endTime same day
+        nextStart = now.clone().startOf('day').add(moment.duration(recurrence.time));
+        nextEnd = now.clone().startOf('day').add(moment.duration(recurrence.endTime));
+
+        // If we've passed today's window, move to tomorrow
+        if (now.isAfter(nextEnd)) {
+          nextStart.add(1, 'day');
+          nextEnd.add(1, 'day');
+        }
+        break;
+
+      case 'weekly':
+        // Weekly: start on recurrence.dayOfWeek at recurrence.time
+        // end on recurrence.endDayOfWeek at recurrence.endTime
+        const startDay = parseInt(recurrence.dayOfWeek);
+        const endDay = parseInt(recurrence.endDayOfWeek);
+
+        nextStart = now.clone().day(startDay).startOf('day').add(moment.duration(recurrence.time));
+        nextEnd = now.clone().day(endDay).startOf('day').add(moment.duration(recurrence.endTime));
+
+        // If end is before start (e.g., Friday to Monday), end is in the next week
+        if (nextEnd.isSameOrBefore(nextStart)) {
+          nextEnd.add(1, 'week');
+        }
+
+        // If we've passed this week's window, move to next week
+        if (now.isAfter(nextEnd)) {
+          nextStart.add(1, 'week');
+          nextEnd.add(1, 'week');
+        }
+        break;
+
+      case 'monthly':
+        // Monthly: start on recurrence.dayOfMonth at recurrence.time
+        // end on recurrence.endDayOfMonth at recurrence.endTime
+        const startDayOfMonth = parseInt(recurrence.dayOfMonth);
+        const endDayOfMonth = parseInt(recurrence.endDayOfMonth);
+
+        nextStart = now.clone().date(startDayOfMonth).startOf('day').add(moment.duration(recurrence.time));
+        nextEnd = now.clone().date(endDayOfMonth).startOf('day').add(moment.duration(recurrence.endTime));
+
+        // If end is before start (e.g., 28th to 3rd), end is in next month
+        if (nextEnd.isSameOrBefore(nextStart)) {
+          nextEnd.add(1, 'month');
+        }
+
+        // If we've passed this month's window, move to next month
+        if (now.isAfter(nextEnd)) {
+          nextStart.add(1, 'month');
+          nextEnd.add(1, 'month');
+        }
+        break;
+
+      default:
+        throw new Error(`Unknown recurrence type: ${recurrence.type}`);
+    }
+
+    return {
+      startTime: nextStart.toISOString(),
+      endTime: nextEnd.toISOString(),
+    };
+  }
+
+  /**
    * Process all pending schedules
    */
   async processPendingSchedules() {
@@ -210,18 +284,18 @@ export class Scheduler {
 
     for (const schedule of pendingSchedules) {
       try {
-        // Handle new format with startTime/endTime
-        if (schedule.startTime && schedule.endTime) {
+        // Handle new format with startTime (endTime optional)
+        if (schedule.startTime) {
           // Parse times as ALREADY being in the shop timezone (datetime-local sends local time)
           const startTime = moment.tz(schedule.startTime, this.shopTimezone);
-          const endTime = moment.tz(schedule.endTime, this.shopTimezone);
+          const endTime = schedule.endTime ? moment.tz(schedule.endTime, this.shopTimezone) : null;
           const startExecuted = schedule.startExecuted || false;
           const endExecuted = schedule.endExecuted || false;
 
           console.log(`[Schedule ${schedule.id}] Checking times:`, {
             now: now.format(),
             startTime: startTime.format(),
-            endTime: endTime.format(),
+            endTime: endTime ? endTime.format() : 'none (runs forever)',
             startExecuted,
             endExecuted,
           });
@@ -230,23 +304,46 @@ export class Scheduler {
           if (now.isSameOrAfter(startTime) && !startExecuted) {
             console.log(`Schedule ${schedule.id}: Executing START action (${schedule.action})`);
             const result = await this.executeScheduleAction(schedule, schedule.action);
-            await this.storage.updateSchedule(schedule.id, {
+
+            // If no endTime, mark as completed after start action
+            const updates = {
               startExecuted: true,
-              status: 'active',
-            });
+              status: endTime ? 'active' : 'completed',
+            };
+
+            await this.storage.updateSchedule(schedule.id, updates);
             results.push({ scheduleId: schedule.id, phase: 'start', ...result });
           }
 
-          // Execute end action (reverse) if it's time and not yet executed
-          if (now.isSameOrAfter(endTime) && !endExecuted) {
+          // Execute end action (reverse) if endTime exists and it's time
+          if (endTime && now.isSameOrAfter(endTime) && !endExecuted) {
             const reverseAction = schedule.action === 'hide' ? 'show' : 'hide';
             console.log(`Schedule ${schedule.id}: Executing END action (${reverseAction})`);
             const result = await this.executeScheduleAction(schedule, reverseAction);
-            await this.storage.updateSchedule(schedule.id, {
-              endExecuted: true,
-              status: 'completed',
-              lastRun: new Date().toISOString(),
-            });
+
+            // Check if this is a recurring schedule
+            if (schedule.recurrence && schedule.recurrence.enabled) {
+              // Calculate next occurrence
+              const nextWindow = this.calculateNextRecurringWindow(schedule);
+              console.log(`Schedule ${schedule.id}: Recurring - next window ${nextWindow.startTime} to ${nextWindow.endTime}`);
+
+              await this.storage.updateSchedule(schedule.id, {
+                startTime: nextWindow.startTime,
+                endTime: nextWindow.endTime,
+                startExecuted: false,
+                endExecuted: false,
+                status: 'pending',
+                lastRun: new Date().toISOString(),
+              });
+            } else {
+              // Non-recurring: mark as completed
+              await this.storage.updateSchedule(schedule.id, {
+                endExecuted: true,
+                status: 'completed',
+                lastRun: new Date().toISOString(),
+              });
+            }
+
             results.push({ scheduleId: schedule.id, phase: 'end', ...result });
           }
         } else {

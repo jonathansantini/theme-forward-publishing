@@ -26,6 +26,10 @@ function ScheduleForm({ initialData, onSubmit, onCancel, submitLabel = 'Create S
     recurrenceDayOfWeek: initialData?.recurrence?.dayOfWeek || 0,
     recurrenceDayOfMonth: initialData?.recurrence?.dayOfMonth || 1,
     recurrenceTime: initialData?.recurrence?.time || '00:00',
+    // New: recurring end time fields
+    recurrenceEndTime: initialData?.recurrence?.endTime || '23:59',
+    recurrenceEndDayOfWeek: initialData?.recurrence?.endDayOfWeek || 0,
+    recurrenceEndDayOfMonth: initialData?.recurrence?.endDayOfMonth || 1,
   });
 
   const [errors, setErrors] = useState({});
@@ -46,29 +50,33 @@ function ScheduleForm({ initialData, onSubmit, onCancel, submitLabel = 'Create S
   const validate = () => {
     const newErrors = {};
 
-    if (!formData.startTime) {
-      newErrors.startTime = 'Start date and time is required';
-    } else {
-      const startDate = new Date(formData.startTime);
-      if (isNaN(startDate.getTime())) {
-        newErrors.startTime = 'Invalid date format';
-      }
-    }
-
-    if (!formData.endTime) {
-      newErrors.endTime = 'End date and time is required';
-    } else {
-      const endDate = new Date(formData.endTime);
-      if (isNaN(endDate.getTime())) {
-        newErrors.endTime = 'Invalid date format';
-      } else if (formData.startTime) {
+    // Validate start time
+    if (!formData.recurrenceEnabled) {
+      // Non-recurring: validate startTime
+      if (!formData.startTime) {
+        newErrors.startTime = 'Start date and time is required';
+      } else {
         const startDate = new Date(formData.startTime);
-        if (endDate <= startDate) {
-          newErrors.endTime = 'End time must be after start time';
+        if (isNaN(startDate.getTime())) {
+          newErrors.startTime = 'Invalid date format';
+        }
+      }
+
+      // Non-recurring: endTime is optional, but validate if provided
+      if (formData.endTime) {
+        const endDate = new Date(formData.endTime);
+        if (isNaN(endDate.getTime())) {
+          newErrors.endTime = 'Invalid date format';
+        } else if (formData.startTime) {
+          const startDate = new Date(formData.startTime);
+          if (endDate <= startDate) {
+            newErrors.endTime = 'End time must be after start time';
+          }
         }
       }
     }
 
+    // Validate recurring schedules
     if (formData.recurrenceEnabled) {
       if (formData.recurrenceType === 'weekly') {
         if (
@@ -76,6 +84,12 @@ function ScheduleForm({ initialData, onSubmit, onCancel, submitLabel = 'Create S
           formData.recurrenceDayOfWeek > 6
         ) {
           newErrors.recurrenceDayOfWeek = 'Day of week must be between 0-6';
+        }
+        if (
+          formData.recurrenceEndDayOfWeek < 0 ||
+          formData.recurrenceEndDayOfWeek > 6
+        ) {
+          newErrors.recurrenceEndDayOfWeek = 'End day of week must be between 0-6';
         }
       }
 
@@ -86,10 +100,19 @@ function ScheduleForm({ initialData, onSubmit, onCancel, submitLabel = 'Create S
         ) {
           newErrors.recurrenceDayOfMonth = 'Day of month must be between 1-31';
         }
+        if (
+          formData.recurrenceEndDayOfMonth < 1 ||
+          formData.recurrenceEndDayOfMonth > 31
+        ) {
+          newErrors.recurrenceEndDayOfMonth = 'End day of month must be between 1-31';
+        }
       }
 
       if (!formData.recurrenceTime || !/^\d{2}:\d{2}$/.test(formData.recurrenceTime)) {
-        newErrors.recurrenceTime = 'Time must be in HH:mm format';
+        newErrors.recurrenceTime = 'Start time must be in HH:mm format';
+      }
+      if (!formData.recurrenceEndTime || !/^\d{2}:\d{2}$/.test(formData.recurrenceEndTime)) {
+        newErrors.recurrenceEndTime = 'End time must be in HH:mm format';
       }
     }
 
@@ -109,7 +132,7 @@ function ScheduleForm({ initialData, onSubmit, onCancel, submitLabel = 'Create S
         name: formData.name,
         action: formData.action,
         startTime: formData.startTime,
-        endTime: formData.endTime,
+        endTime: formData.endTime || undefined, // Optional for non-recurring
         recurrence: formData.recurrenceEnabled
           ? {
               enabled: true,
@@ -117,6 +140,9 @@ function ScheduleForm({ initialData, onSubmit, onCancel, submitLabel = 'Create S
               dayOfWeek: formData.recurrenceDayOfWeek,
               dayOfMonth: formData.recurrenceDayOfMonth,
               time: formData.recurrenceTime,
+              endTime: formData.recurrenceEndTime,
+              endDayOfWeek: formData.recurrenceEndDayOfWeek,
+              endDayOfMonth: formData.recurrenceEndDayOfMonth,
             }
           : { enabled: false },
       };
@@ -189,14 +215,16 @@ function ScheduleForm({ initialData, onSubmit, onCancel, submitLabel = 'Create S
           helpText="When should this action start?"
         />
 
-        <TextField
-          label="End Date & Time"
-          type="datetime-local"
-          value={formData.endTime}
-          onChange={handleChange('endTime')}
-          error={errors.endTime}
-          helpText="When should this action end? (action will automatically reverse)"
-        />
+        {!formData.recurrenceEnabled && (
+          <TextField
+            label="End Date & Time (optional)"
+            type="datetime-local"
+            value={formData.endTime}
+            onChange={handleChange('endTime')}
+            error={errors.endTime}
+            helpText="When should this action end? Leave blank to run indefinitely."
+          />
+        )}
 
         <Checkbox
           label="Make this a recurring schedule"
@@ -215,19 +243,20 @@ function ScheduleForm({ initialData, onSubmit, onCancel, submitLabel = 'Create S
 
             {formData.recurrenceType === 'weekly' && (
               <Select
-                label="Day of Week"
+                label="Start Day of Week"
                 options={dayOfWeekOptions}
                 value={String(formData.recurrenceDayOfWeek)}
                 onChange={(value) =>
                   handleChange('recurrenceDayOfWeek')(parseInt(value))
                 }
                 error={errors.recurrenceDayOfWeek}
+                helpText="Day of week to start the action"
               />
             )}
 
             {formData.recurrenceType === 'monthly' && (
               <TextField
-                label="Day of Month"
+                label="Start Day of Month"
                 type="number"
                 value={String(formData.recurrenceDayOfMonth)}
                 onChange={(value) =>
@@ -236,16 +265,54 @@ function ScheduleForm({ initialData, onSubmit, onCancel, submitLabel = 'Create S
                 error={errors.recurrenceDayOfMonth}
                 min={1}
                 max={31}
+                helpText="Day of month to start the action"
               />
             )}
 
             <TextField
-              label="Time"
+              label="Start Time"
               type="time"
               value={formData.recurrenceTime}
               onChange={handleChange('recurrenceTime')}
               error={errors.recurrenceTime}
-              helpText="Time of day for recurring schedules (HH:mm format)"
+              helpText="Time of day to start the action"
+            />
+
+            {formData.recurrenceType === 'weekly' && (
+              <Select
+                label="End Day of Week"
+                options={dayOfWeekOptions}
+                value={String(formData.recurrenceEndDayOfWeek)}
+                onChange={(value) =>
+                  handleChange('recurrenceEndDayOfWeek')(parseInt(value))
+                }
+                error={errors.recurrenceEndDayOfWeek}
+                helpText="Day of week to end the action"
+              />
+            )}
+
+            {formData.recurrenceType === 'monthly' && (
+              <TextField
+                label="End Day of Month"
+                type="number"
+                value={String(formData.recurrenceEndDayOfMonth)}
+                onChange={(value) =>
+                  handleChange('recurrenceEndDayOfMonth')(parseInt(value))
+                }
+                error={errors.recurrenceEndDayOfMonth}
+                min={1}
+                max={31}
+                helpText="Day of month to end the action"
+              />
+            )}
+
+            <TextField
+              label="End Time"
+              type="time"
+              value={formData.recurrenceEndTime}
+              onChange={handleChange('recurrenceEndTime')}
+              error={errors.recurrenceEndTime}
+              helpText="Time of day to end the action (automatic reversal)"
             />
           </>
         )}

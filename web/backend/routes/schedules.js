@@ -94,10 +94,17 @@ router.post('/', verifyAuth, async (req, res) => {
       endExecuted: false, // Track if end action has been executed
     };
 
-    // For new format with startTime/endTime, also set executeAt to startTime for compatibility
-    if (req.body.startTime) {
+    // Handle recurring schedules: calculate first window
+    if (req.body.recurrence && req.body.recurrence.enabled) {
+      const firstWindow = scheduler.calculateNextRecurringWindow(req.body);
+      scheduleData.startTime = firstWindow.startTime;
+      scheduleData.endTime = firstWindow.endTime;
+      scheduleData.executeAt = firstWindow.startTime;
+      console.log(`[Create] Creating recurring schedule - first window from ${firstWindow.startTime} to ${firstWindow.endTime}`);
+    } else if (req.body.startTime) {
+      // Non-recurring with startTime/endTime
       scheduleData.executeAt = req.body.startTime;
-      console.log(`[Create] Creating schedule window from ${req.body.startTime} to ${req.body.endTime}`);
+      console.log(`[Create] Creating schedule window from ${req.body.startTime} to ${req.body.endTime || 'none (indefinite)'}`);
     } else {
       console.log(`[Create] Creating schedule in draft state (finalized=false)`);
     }
