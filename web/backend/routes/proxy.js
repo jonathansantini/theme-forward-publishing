@@ -91,8 +91,10 @@ router.get('/visibility.js', async (req, res) => {
       res.type('text/javascript');
     }
 
-    // Set caching headers (cache for 1 minute to balance freshness vs performance)
-    res.set('Cache-Control', 'public, max-age=60');
+    // Set caching headers (NO cache during development for testing)
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
 
     return res.status(200).send(response);
 
