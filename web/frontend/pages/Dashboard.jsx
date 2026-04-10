@@ -281,6 +281,19 @@ function Dashboard() {
                             {!finalized && (
                               <Button
                                 size="slim"
+                                tone="critical"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteSchedule(id);
+                                }}
+                              >
+                                Delete
+                              </Button>
+                            )}
+                            {!finalized && (
+                              <Button
+                                size="slim"
+                                variant="primary"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleFinalizeSchedule(id);
@@ -298,18 +311,6 @@ function Dashboard() {
                                 }}
                               >
                                 Unpublish
-                              </Button>
-                            )}
-                            {!finalized && (
-                              <Button
-                                size="slim"
-                                tone="critical"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteSchedule(id);
-                                }}
-                              >
-                                Delete
                               </Button>
                             )}
                           </ButtonGroup>

@@ -539,9 +539,12 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
       // Inject CSS for badges
       injectBadgeStyles();
 
-      // Add badges to scheduled sections
+      // Add badges to scheduled sections (skip completed schedules)
       schedules.forEach(function(schedule) {
-        addBadgeToSection(schedule);
+        // Only show badges for pending and active schedules
+        if (schedule.status !== 'completed') {
+          addBadgeToSection(schedule);
+        }
       });
 
     } catch (error) {
@@ -562,7 +565,7 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
         top: 0;
         left: 0;
         right: 0;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: #D97706;
         color: white;
         padding: 12px 16px;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -573,18 +576,15 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
         display: flex;
         justify-content: space-between;
         align-items: center;
+        pointer-events: auto;
       }
 
       .section-scheduler-badge.status-pending {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: #D97706;
       }
 
       .section-scheduler-badge.status-active {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-      }
-
-      .section-scheduler-badge.status-completed {
-        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        background: #D97706;
       }
 
       .section-scheduler-badge-icon {
@@ -594,15 +594,19 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
       .section-scheduler-badge-link {
         color: white;
         text-decoration: none;
-        padding: 4px 12px;
-        background: rgba(255,255,255,0.2);
+        padding: 6px 14px;
+        background: rgba(255,255,255,0.25);
         border-radius: 4px;
         font-size: 12px;
-        transition: background 0.2s;
+        font-weight: 600;
+        transition: all 0.2s;
+        cursor: pointer;
+        pointer-events: auto;
       }
 
       .section-scheduler-badge-link:hover {
-        background: rgba(255,255,255,0.3);
+        background: rgba(255,255,255,0.4);
+        transform: translateX(2px);
       }
 
       .section-scheduler-overlay {
@@ -612,6 +616,10 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
       .section-scheduler-overlay.is-hidden {
         opacity: 0.4;
         pointer-events: none;
+      }
+
+      .section-scheduler-overlay.is-hidden .section-scheduler-badge {
+        pointer-events: auto;
       }
     \`;
     document.head.appendChild(style);
