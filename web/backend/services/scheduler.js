@@ -437,9 +437,7 @@ export class Scheduler {
     if (!scheduleData.executeAt && !scheduleData.startTime) {
       errors.push('Start time is required');
     }
-    if (scheduleData.startTime && !scheduleData.endTime) {
-      errors.push('End time is required when start time is provided');
-    }
+    // Note: endTime is optional - if not provided, schedule runs indefinitely
 
     // Validate action
     if (!['show', 'hide'].includes(scheduleData.action)) {
@@ -449,22 +447,27 @@ export class Scheduler {
     // Validate times
     const now = moment().tz(this.shopTimezone || 'UTC');
 
-    if (scheduleData.startTime && scheduleData.endTime) {
-      const startTime = moment(scheduleData.startTime).tz(this.shopTimezone || 'UTC');
-      const endTime = moment(scheduleData.endTime).tz(this.shopTimezone || 'UTC');
+    if (scheduleData.startTime) {
+      const startTime = moment.tz(scheduleData.startTime, this.shopTimezone || 'UTC');
 
       if (!startTime.isValid()) {
         errors.push('Invalid start time format');
       }
-      if (!endTime.isValid()) {
-        errors.push('Invalid end time format');
-      }
-      if (startTime.isValid() && endTime.isValid() && endTime.isSameOrBefore(startTime)) {
-        errors.push('End time must be after start time');
+
+      // Validate endTime only if provided
+      if (scheduleData.endTime) {
+        const endTime = moment.tz(scheduleData.endTime, this.shopTimezone || 'UTC');
+
+        if (!endTime.isValid()) {
+          errors.push('Invalid end time format');
+        }
+        if (startTime.isValid() && endTime.isValid() && endTime.isSameOrBefore(startTime)) {
+          errors.push('End time must be after start time');
+        }
       }
     } else if (scheduleData.executeAt) {
       // Legacy support for executeAt
-      const executeAt = moment(scheduleData.executeAt).tz(this.shopTimezone || 'UTC');
+      const executeAt = moment.tz(scheduleData.executeAt, this.shopTimezone || 'UTC');
       if (executeAt.isSameOrBefore(now)) {
         errors.push('Execution time must be in the future');
       }
