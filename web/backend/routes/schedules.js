@@ -148,8 +148,14 @@ router.put('/:id', verifyAuth, async (req, res) => {
   try {
     const { storage } = initServices(req.shopifySession);
 
+    // Get current schedule to check status
+    const currentSchedule = await storage.getSchedule(req.params.id);
+    console.log(`[Update] Current finalized status: ${currentSchedule?.finalized}`);
+    console.log(`[Update] Update data:`, req.body);
+
     const schedule = await storage.updateSchedule(req.params.id, req.body);
 
+    console.log(`[Update] Updated successfully, new finalized status: ${schedule.finalized}`);
     res.json({ schedule });
   } catch (error) {
     console.error('Update schedule error:', error);

@@ -50,8 +50,10 @@ function EditSchedule() {
         themeId: selectedSection.themeId,
         templateName: selectedSection.templateName,
         sectionId: selectedSection.sectionId,
+        finalized: false,  // Ensure schedule stays in draft mode when editing
       };
 
+      console.log('[EditSchedule] Submitting update:', fullScheduleData);
       await updateSchedule(id, fullScheduleData);
 
       setSuccess(true);
