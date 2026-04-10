@@ -147,10 +147,55 @@
           console.log('[Section Scheduler Inline] Total removed:', removed);
         }
 
-        // Apply hiding immediately
+        // Detect if we're in the theme customizer
+        function isInCustomizer() {
+          var inIframe = window.parent !== window;
+          if (!inIframe) {
+            return false;
+          }
+
+          try {
+            // Try to access iframe element attributes
+            if (window.frameElement) {
+              var iframeId = window.frameElement.id || '';
+              var iframeClass = window.frameElement.className || '';
+
+              // Shopify customizer uses iframe with id like "storefront-iframe-1"
+              if (iframeId.includes('storefront-iframe') || iframeClass.includes('storefront')) {
+                return true;
+              }
+            }
+          } catch (e) {
+            // CORS blocked - can't access frameElement
+          }
+
+          // Fallback: if in any iframe, assume it's customizer
+          // (Live site is never in iframe)
+          return inIframe;
+        }
+
+        // Apply hiding immediately OR load badge script if in customizer
         function applyVisibility() {
-          removeSections();
-          removeBlocks();
+          var inCustomizer = isInCustomizer();
+
+          if (inCustomizer) {
+            console.log('[Section Scheduler Inline] Customizer detected - loading badge script instead of hiding');
+
+            // Dynamically load the proxy script for badge injection
+            var script = document.createElement('script');
+            script.src = '/apps/scheduler/visibility.js?mode=badges&v=' + Date.now();
+            script.onerror = function() {
+              console.error('[Section Scheduler Inline] Failed to load badge script');
+            };
+            script.onload = function() {
+              console.log('[Section Scheduler Inline] Badge script loaded successfully');
+            };
+            document.head.appendChild(script);
+          } else {
+            console.log('[Section Scheduler Inline] Live site - applying visibility rules');
+            removeSections();
+            removeBlocks();
+          }
         }
 
         // Execute as early as possible
