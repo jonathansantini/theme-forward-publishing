@@ -309,10 +309,13 @@ router.post('/:id/unpublish', verifyAuth, async (req, res) => {
       // Continue with unpublish even if show fails
     }
 
-    // Update schedule status - set to pending so it can be re-executed
+    // Update schedule status - reset execution state so it can be re-executed
     const updatedSchedule = await storage.updateSchedule(req.params.id, {
       status: 'pending',
       finalized: false,
+      startExecuted: false,  // Reset execution flags
+      endExecuted: false,     // Allow re-execution with new dates
+      lastRun: null,          // Clear last run timestamp
     });
 
     res.json({ schedule: updatedSchedule, result });
