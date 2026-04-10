@@ -183,7 +183,7 @@
 
             // Dynamically load the proxy script for badge injection
             var script = document.createElement('script');
-            script.src = '/apps/scheduler/visibility.js?mode=badges&v=' + Date.now();
+            script.src = '/apps/scheduler/visibility.js?mode=js&v=' + Date.now();
             script.onerror = function() {
               console.error('[Section Scheduler Inline] Failed to load badge script');
             };
