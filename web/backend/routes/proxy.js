@@ -477,8 +477,8 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
   }
 
   async function injectCustomizerBadges() {
-    if (!inCustomizer || !isAdmin()) {
-      console.log('[Section Scheduler] Not in customizer or not admin, skipping badges');
+    if (!inCustomizer) {
+      console.log('[Section Scheduler] Not in customizer, skipping badges');
       return;
     }
 
