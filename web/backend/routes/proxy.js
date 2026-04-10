@@ -648,9 +648,15 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
     var icon = schedule.status === 'active' ? '🔴' :
                schedule.status === 'pending' ? '⏰' : '✅';
 
-    var statusText = schedule.status === 'active' ? 'Active - ' + (schedule.action === 'hide' ? 'Hidden' : 'Shown') + ' by app' :
-                     schedule.status === 'pending' ? 'Scheduled to ' + schedule.action :
-                     'Completed';
+    // Build status badge text
+    var statusBadge = schedule.status === 'active' ? 'ACTIVE NOW' :
+                      schedule.status === 'pending' ? 'PENDING' : 'COMPLETED';
+
+    // Build action text
+    var actionText = schedule.action === 'hide' ? 'Hide Section' : 'Show Section';
+
+    // Build full status text
+    var statusText = schedule.name || (actionText + ' - ' + statusBadge);
 
     var timeText = '';
     if (schedule.startTime && schedule.endTime) {
@@ -658,16 +664,21 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
       var end = new Date(schedule.endTime).toLocaleString();
       timeText = start + ' - ' + end;
     } else if (schedule.startTime) {
-      timeText = new Date(schedule.startTime).toLocaleString();
+      var start = new Date(schedule.startTime).toLocaleString();
+      timeText = start + ' (ongoing)';
     }
 
-    // Build app URL
-    var appUrl = '/admin/apps/section-scheduler-1'; // Will need to get actual app handle
+    // Build app URL - Get from Shopify global or construct
+    var shopDomain = window.Shopify && window.Shopify.shop ? window.Shopify.shop : '';
+    var appUrl = shopDomain ?
+      'https://admin.shopify.com/store/' + shopDomain.replace('.myshopify.com', '') + '/apps/section-scheduler' :
+      '/admin/apps/section-scheduler';
 
     badge.innerHTML = \`
       <div>
         <span class="section-scheduler-badge-icon">\${icon}</span>
-        <span>\${schedule.name || statusText}</span>
+        <strong>\${actionText}</strong> · <span style="opacity: 0.9;">\${statusBadge}</span>
+        \${schedule.name ? '<div style="font-size: 12px; margin-top: 4px; opacity: 0.9;">' + schedule.name + '</div>' : ''}
         \${timeText ? '<div style="font-size: 12px; margin-top: 4px; opacity: 0.9;">' + timeText + '</div>' : ''}
       </div>
       <a href="\${appUrl}" target="_top" class="section-scheduler-badge-link">

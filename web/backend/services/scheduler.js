@@ -305,10 +305,10 @@ export class Scheduler {
             console.log(`Schedule ${schedule.id}: Executing START action (${schedule.action})`);
             const result = await this.executeScheduleAction(schedule, schedule.action);
 
-            // If no endTime, mark as completed after start action
+            // Mark as active after start action (stays active until endTime or manual unpublish)
             const updates = {
               startExecuted: true,
-              status: endTime ? 'active' : 'completed',
+              status: 'active',
             };
 
             await this.storage.updateSchedule(schedule.id, updates);
