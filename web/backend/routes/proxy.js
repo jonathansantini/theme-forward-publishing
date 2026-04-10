@@ -76,12 +76,10 @@ router.get('/visibility.js', async (req, res) => {
     console.log('[Proxy] Hidden sections:', hiddenSections);
     console.log('[Proxy] Hidden blocks:', hiddenBlocks);
 
-    if ((!hiddenSections || hiddenSections.length === 0) &&
-        (!hiddenBlocks || Object.keys(hiddenBlocks).length === 0)) {
-      return res.status(200).type('text/javascript').send(
-        '// No sections or blocks to hide'
-      );
-    }
+    // NOTE: Always generate the full script even if metafields are empty
+    // The script includes customizer badge logic that fetches schedules
+    // independently from /schedules.json endpoint (not from metafields)
+    // This avoids GraphQL caching issues with metafields
 
     // Generate response based on mode
     let response;
