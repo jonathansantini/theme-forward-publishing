@@ -485,9 +485,44 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
     console.log('[Section Scheduler] In customizer mode - injecting badges');
 
     try {
-      // Get current template name from meta tag or URL
+      // Get current template name from multiple sources
+      var template = null;
+
+      // Method 1: Check meta tag
       var templateMeta = document.querySelector('meta[name="shopify-template"]');
-      var template = templateMeta ? templateMeta.content : null;
+      if (templateMeta && templateMeta.content) {
+        template = templateMeta.content;
+      }
+
+      // Method 2: Check Shopify global variable
+      if (!template && typeof Shopify !== 'undefined' && Shopify.theme) {
+        // Try to get template from URL or page context
+        var pathname = window.location.pathname;
+        if (pathname === '/' || pathname === '') {
+          template = 'index';
+        }
+      }
+
+      // Method 3: Parse from URL
+      if (!template) {
+        var pathname = window.location.pathname;
+        if (pathname === '/' || pathname === '') {
+          template = 'index';
+        } else if (pathname.includes('/pages/')) {
+          template = 'page';
+        } else if (pathname.includes('/products/')) {
+          template = 'product';
+        } else if (pathname.includes('/collections/')) {
+          template = 'collection';
+        }
+      }
+
+      // Add .json extension if not present
+      if (template && !template.endsWith('.json')) {
+        template = template + '.json';
+      }
+
+      console.log('[Section Scheduler] Detected template:', template);
 
       if (!template) {
         console.log('[Section Scheduler] Could not determine template name');
