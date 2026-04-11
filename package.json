@@ -10,16 +10,16 @@
     "dev:frontend": "cd web/frontend && vite",
     "build": "cd web/frontend && vite build",
     "start": "node web/backend/server.js",
-    "test": "vitest run --workspace",
-    "test:watch": "vitest watch --workspace",
-    "test:ui": "vitest --ui --workspace",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "test:ui": "vitest --ui",
     "test:backend": "cd web/backend && vitest run",
     "test:frontend": "cd web/frontend && vitest run",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
-    "test:coverage": "vitest run --coverage --workspace",
-    "test:ci": "vitest run --coverage --reporter=verbose --workspace && playwright test"
+    "test:coverage": "vitest run --coverage",
+    "test:ci": "vitest run --coverage --reporter=verbose && playwright test"
   },
   "keywords": [
     "shopify",
