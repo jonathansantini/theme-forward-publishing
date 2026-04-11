@@ -28,4 +28,8 @@ export default defineConfig({
       '@tests': path.resolve(__dirname, './tests'),
     },
   },
+  ssr: {
+    // Workaround for happy-dom ESM/CJS compatibility issues
+    noExternal: ['html-encoding-sniffer'],
+  },
 });
