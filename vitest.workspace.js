@@ -7,6 +7,9 @@ import { defineWorkspace } from 'vitest/config';
  * - Backend tests: Node environment, tests API/service logic
  * - Frontend tests: Happy-DOM environment, tests React components
  *
+ * E2E tests (in e2e/) use Playwright and should NOT be run via Vitest.
+ * Run them separately with: npm run test:e2e
+ *
  * Usage:
  *   npm run test          - Run all tests (backend + frontend)
  *   npm run test:backend  - Run only backend tests
@@ -18,6 +21,7 @@ export default defineWorkspace([
     test: {
       name: 'backend',
       root: './web/backend',
+      exclude: ['**/node_modules/**', '**/dist/**', '**/e2e/**'],
     },
   },
   {
@@ -25,6 +29,7 @@ export default defineWorkspace([
     test: {
       name: 'frontend',
       root: './web/frontend',
+      exclude: ['**/node_modules/**', '**/dist/**', '**/e2e/**'],
     },
   },
 ]);

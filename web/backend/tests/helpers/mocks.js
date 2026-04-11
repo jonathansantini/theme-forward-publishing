@@ -39,6 +39,9 @@ export function createMockStorage() {
 
   return {
     getSchedules: vi.fn().mockImplementation(() => Promise.resolve([...schedules])),
+    getPendingSchedules: vi.fn().mockImplementation(() =>
+      Promise.resolve(schedules.filter((s) => s.finalized && !s.startExecuted))
+    ),
     getSchedule: vi.fn().mockImplementation((id) =>
       Promise.resolve(schedules.find((s) => s.id === id) || null)
     ),
@@ -60,11 +63,15 @@ export function createMockStorage() {
     }),
     deleteSchedule: vi.fn().mockImplementation((id) => {
       const index = schedules.findIndex((s) => s.id === id);
-      if (index === -1) throw new Error('Schedule not found');
-      schedules.splice(index, 1);
+      if (index !== -1) {
+        schedules.splice(index, 1);
+      }
+      // Don't throw error if not found - mimics metafield behavior
       return Promise.resolve();
     }),
     saveSchedules: vi.fn().mockResolvedValue(undefined),
+    // Allow tests to directly manipulate the schedules array for setup
+    _schedules: schedules,
   };
 }
 
