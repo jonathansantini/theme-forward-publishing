@@ -63,10 +63,14 @@ export function createMockStorage() {
     }),
     updateSchedule: vi.fn().mockImplementation((id, updates) => {
       const index = schedules.findIndex((s) => s.id === id);
-      if (index === -1) throw new Error('Schedule not found');
-      schedules[index] = { ...schedules[index], ...updates };
-      return Promise.resolve(schedules[index]);
+      if (index !== -1) {
+        schedules[index] = { ...schedules[index], ...updates };
+        return Promise.resolve(schedules[index]);
+      }
+      // If schedule not in internal array, still succeed (mimics metafield behavior)
+      return Promise.resolve({ id, ...updates });
     }),
+    logExecution: vi.fn().mockResolvedValue(undefined),
     deleteSchedule: vi.fn().mockImplementation((id) => {
       const index = schedules.findIndex((s) => s.id === id);
       if (index !== -1) {
