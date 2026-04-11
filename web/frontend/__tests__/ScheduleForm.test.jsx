@@ -5,9 +5,16 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import ScheduleForm from '../components/ScheduleForm';
+
+// Mock isomorphic-dompurify to avoid ES module issues
+vi.mock('isomorphic-dompurify', () => ({
+  default: {
+    sanitize: (dirty) => {
+      if (typeof dirty !== 'string') return '';
+      return dirty.replace(/<[^>]*>/g, '');
+    },
+  },
+}));
 
 // Mock Polaris AppProvider
 vi.mock('@shopify/polaris', async () => {
@@ -17,6 +24,10 @@ vi.mock('@shopify/polaris', async () => {
     AppProvider: ({ children }) => children,
   };
 });
+
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import ScheduleForm from '../components/ScheduleForm';
 
 // Mock timezone hook
 vi.mock('../hooks/useTimezone', () => ({
