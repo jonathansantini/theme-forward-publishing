@@ -30,6 +30,7 @@ export default defineWorkspace([
     test: {
       name: 'frontend',
       root: './web/frontend',
+      environment: 'jsdom', // Must explicitly set environment in workspace config
       include: ['**/__tests__/**/*.test.jsx'],
       exclude: ['**/node_modules/**', '**/dist/**', '**/e2e/**', '**/*.spec.js'],
     },
