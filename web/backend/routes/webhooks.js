@@ -76,11 +76,30 @@ router.post('/customers/data_request', async (req, res) => {
     const shop = req.headers['x-shopify-shop-domain'];
     const webhookData = req.body;
 
-    // TODO: Implement logic to gather and send customer data
-    // Reference: https://shopify.dev/docs/apps/build/privacy-law-compliance#customer-data-request
-
     console.log('[Webhook] Customer data request for shop:', shop);
-    console.log('[Webhook] Request data:', webhookData);
+    console.log('[Webhook] Customer ID:', webhookData.customer?.id);
+    console.log('[Webhook] Request ID:', webhookData.shop_domain);
+
+    // This app does not collect or store customer-specific data
+    // We only store shop-level schedule configuration (sections, times, actions)
+    // No customer PII is collected or stored
+
+    const responseData = {
+      app_name: 'Section Scheduler',
+      shop_domain: shop,
+      customer_id: webhookData.customer?.id,
+      data_collected: 'none',
+      explanation: 'This app does not collect or store customer-specific data. It only stores shop-level section scheduling configuration which is not tied to individual customers.',
+      schedules: 'Shop-level section visibility schedules (not customer-specific)',
+      processed_at: new Date().toISOString(),
+    };
+
+    console.log('[Webhook] Data request response:', responseData);
+
+    // In a real implementation, you might want to:
+    // 1. Log this request for audit purposes
+    // 2. Email the data to the merchant
+    // 3. Store the request in a compliance log
 
     return res.status(200).send('OK');
   } catch (error) {
@@ -96,11 +115,23 @@ router.post('/customers/redact', async (req, res) => {
     const shop = req.headers['x-shopify-shop-domain'];
     const webhookData = req.body;
 
-    // TODO: Implement logic to redact customer data
-    // Reference: https://shopify.dev/docs/apps/build/privacy-law-compliance#customer-data-erasure
-
     console.log('[Webhook] Customer redaction for shop:', shop);
-    console.log('[Webhook] Redaction data:', webhookData);
+    console.log('[Webhook] Customer ID:', webhookData.customer?.id);
+    console.log('[Webhook] Request ID:', webhookData.shop_domain);
+
+    // This app does not collect or store customer-specific data
+    // No action needed as there is no customer PII to redact
+    // We only store shop-level configuration data
+
+    // Log the redaction request for compliance audit trail
+    console.log('[Webhook] Customer redaction completed (no data stored)');
+    console.log('[Webhook] Processed at:', new Date().toISOString());
+
+    // In a production app, you might:
+    // 1. Search for any customer-specific data
+    // 2. Delete or anonymize it
+    // 3. Log the deletion for compliance audit
+    // 4. Confirm deletion via email
 
     return res.status(200).send('OK');
   } catch (error) {
@@ -114,23 +145,59 @@ router.post('/shop/redact', async (req, res) => {
   try {
     console.log('[Webhook] Shop redaction request received');
     const shop = req.headers['x-shopify-shop-domain'];
-
-    // TODO: Implement logic to redact all shop data (48 hours after uninstall)
-    // Reference: https://shopify.dev/docs/apps/build/privacy-law-compliance#shop-data-erasure
+    const webhookData = req.body;
 
     console.log('[Webhook] Shop redaction for:', shop);
+    console.log('[Webhook] Shop ID:', webhookData.shop_id);
+    console.log('[Webhook] Shop domain:', webhookData.shop_domain);
 
-    // Clean up all data for this shop
+    // This webhook fires 48 hours after app uninstall
+    // We must delete ALL shop data per GDPR requirements
+
+    const deletionLog = {
+      shop,
+      startTime: new Date().toISOString(),
+      sessionsDeleted: 0,
+      errors: [],
+    };
+
+    // 1. Delete all sessions for this shop
     try {
       const sessions = await shopify.config.sessionStorage.findSessionsByShop(shop);
-      if (sessions) {
+      if (sessions && sessions.length > 0) {
         for (const session of sessions) {
           await shopify.config.sessionStorage.deleteSession(session.id);
+          deletionLog.sessionsDeleted++;
+          console.log(`[Webhook] Deleted session: ${session.id}`);
         }
       }
+      console.log(`[Webhook] Deleted ${deletionLog.sessionsDeleted} session(s)`);
     } catch (error) {
-      console.error('[Webhook] Error during shop redaction:', error);
+      console.error('[Webhook] Error deleting sessions:', error);
+      deletionLog.errors.push(`Session deletion: ${error.message}`);
     }
+
+    // 2. Note: Metafields are automatically deleted by Shopify when app is uninstalled
+    // Our app uses shop metafields which Shopify removes on app uninstall
+    // Reference: https://shopify.dev/docs/apps/build/privacy-law-compliance#shop-data-erasure
+    console.log('[Webhook] Metafields automatically deleted by Shopify on uninstall');
+
+    // 3. Remove from any active tracking
+    if (global.activeShops && global.activeShops.has(shop)) {
+      global.activeShops.delete(shop);
+      console.log(`[Webhook] Removed ${shop} from active shops tracking`);
+    }
+
+    deletionLog.completedAt = new Date().toISOString();
+    deletionLog.status = deletionLog.errors.length === 0 ? 'success' : 'partial';
+
+    console.log('[Webhook] Shop redaction completed:', deletionLog);
+
+    // In production, you might want to:
+    // 1. Store deletion log for compliance audit
+    // 2. Send confirmation email
+    // 3. Update external systems
+    // 4. Archive data in compliance-approved long-term storage
 
     return res.status(200).send('OK');
   } catch (error) {

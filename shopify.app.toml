@@ -13,6 +13,21 @@ api_version = "2025-10"
 topics = ["app/uninstalled"]
 uri = "/webhooks/app/uninstalled"
 
+[[webhooks.subscriptions]]
+# GDPR: Customer data request (required for compliance)
+topics = ["customers/data_request"]
+uri = "/webhooks/customers/data_request"
+
+[[webhooks.subscriptions]]
+# GDPR: Customer data erasure (required for compliance)
+topics = ["customers/redact"]
+uri = "/webhooks/customers/redact"
+
+[[webhooks.subscriptions]]
+# GDPR: Shop data erasure - fires 48hrs after uninstall (required for compliance)
+topics = ["shop/redact"]
+uri = "/webhooks/shop/redact"
+
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
 scopes = "read_content,read_themes,write_content,write_themes"

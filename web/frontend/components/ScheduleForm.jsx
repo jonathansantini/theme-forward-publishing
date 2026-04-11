@@ -10,6 +10,7 @@ import {
   Text,
   Banner,
 } from '@shopify/polaris';
+import DOMPurify from 'isomorphic-dompurify';
 import { useTimezone } from '../hooks/useTimezone';
 
 function ScheduleForm({ initialData, onSubmit, onCancel, submitLabel = 'Create Schedule' }) {
@@ -128,8 +129,14 @@ function ScheduleForm({ initialData, onSubmit, onCancel, submitLabel = 'Create S
     setSubmitting(true);
 
     try {
+      // Sanitize user inputs to prevent XSS attacks
+      const sanitizedName = DOMPurify.sanitize(formData.name || '', {
+        ALLOWED_TAGS: [], // Strip all HTML tags
+        ALLOWED_ATTR: [], // Strip all attributes
+      });
+
       const scheduleData = {
-        name: formData.name,
+        name: sanitizedName,
         action: formData.action,
         startTime: formData.startTime,
         endTime: formData.endTime || undefined, // Optional for non-recurring

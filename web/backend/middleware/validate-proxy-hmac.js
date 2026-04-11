@@ -23,8 +23,12 @@ export function validateProxyHmac(req, res, next) {
   const { signature, ...queryParams } = req.query;
 
   // Skip validation in development if SKIP_PROXY_VALIDATION is set
-  if (process.env.NODE_ENV === 'development' && process.env.SKIP_PROXY_VALIDATION === 'true') {
-    console.warn('⚠️  WARNING: HMAC validation skipped for development');
+  // SECURITY: Only allow on localhost to prevent accidental production bypass
+  if (process.env.NODE_ENV === 'development' &&
+      process.env.SKIP_PROXY_VALIDATION === 'true' &&
+      (process.env.SHOPIFY_APP_URL?.includes('localhost') ||
+       process.env.SHOPIFY_APP_URL?.includes('127.0.0.1'))) {
+    console.warn('⚠️  WARNING: HMAC validation skipped for development (localhost only)');
     return next();
   }
 

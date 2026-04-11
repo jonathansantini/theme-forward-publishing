@@ -548,6 +548,59 @@ export class Scheduler {
       conflicts,
     };
   }
+
+  /**
+   * Clean up old completed schedules (data retention policy)
+   * Deletes completed schedules older than the retention period
+   *
+   * @param {number} retentionDays - Number of days to retain completed schedules (default: 90)
+   * @returns {Object} Cleanup statistics
+   */
+  async cleanupOldSchedules(retentionDays = 90) {
+    console.log(`[Cleanup] Starting cleanup of schedules older than ${retentionDays} days`);
+
+    const schedules = await this.storage.getSchedules();
+    const cutoffDate = moment().subtract(retentionDays, 'days');
+
+    const stats = {
+      total: schedules.length,
+      checked: 0,
+      deleted: 0,
+      kept: 0,
+      errors: [],
+    };
+
+    for (const schedule of schedules) {
+      stats.checked++;
+
+      // Only delete completed schedules (keep active and pending)
+      if (schedule.status !== 'completed') {
+        stats.kept++;
+        continue;
+      }
+
+      // Check if schedule is older than retention period
+      const updatedAt = moment(schedule.updatedAt);
+      if (updatedAt.isBefore(cutoffDate)) {
+        try {
+          await this.storage.deleteSchedule(schedule.id);
+          stats.deleted++;
+          console.log(`[Cleanup] Deleted old schedule: ${schedule.id} (${schedule.name || 'unnamed'})`);
+        } catch (error) {
+          console.error(`[Cleanup] Error deleting schedule ${schedule.id}:`, error);
+          stats.errors.push({
+            scheduleId: schedule.id,
+            error: error.message,
+          });
+        }
+      } else {
+        stats.kept++;
+      }
+    }
+
+    console.log(`[Cleanup] Completed: ${stats.deleted} deleted, ${stats.kept} kept, ${stats.errors.length} errors`);
+    return stats;
+  }
 }
 
 export default Scheduler;
