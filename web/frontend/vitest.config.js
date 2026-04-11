@@ -28,4 +28,10 @@ export default defineConfig({
       '@tests': path.resolve(__dirname, './tests'),
     },
   },
+  server: {
+    deps: {
+      // Inline problematic dependencies to avoid ES module issues
+      inline: ['isomorphic-dompurify', 'dompurify', 'html-encoding-sniffer'],
+    },
+  },
 });
