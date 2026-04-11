@@ -7,10 +7,10 @@ export default defineConfig({
   test: {
     name: 'frontend',
     globals: true,
-    environment: 'happy-dom',
+    environment: 'jsdom', // Using jsdom instead of happy-dom for better ES module compatibility
     setupFiles: ['./tests/setup.js'],
     include: ['**/__tests__/**/*.test.jsx', '**/*.test.jsx'],
-    exclude: ['**/node_modules/**', '**/dist/**'],
+    exclude: ['**/node_modules/**', '**/dist/**', '**/e2e/**', '**/*.spec.js'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
@@ -27,9 +27,5 @@ export default defineConfig({
       '@': path.resolve(__dirname, './'),
       '@tests': path.resolve(__dirname, './tests'),
     },
-  },
-  ssr: {
-    // Workaround for happy-dom ESM/CJS compatibility issues
-    noExternal: ['html-encoding-sniffer'],
   },
 });
