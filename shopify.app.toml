@@ -13,20 +13,13 @@ api_version = "2025-10"
 topics = ["app/uninstalled"]
 uri = "/webhooks/app/uninstalled"
 
-[[webhooks.subscriptions]]
-# GDPR: Customer data request (required for compliance)
-topics = ["customers/data_request"]
-uri = "/webhooks/customers/data_request"
-
-[[webhooks.subscriptions]]
-# GDPR: Customer data erasure (required for compliance)
-topics = ["customers/redact"]
-uri = "/webhooks/customers/redact"
-
-[[webhooks.subscriptions]]
-# GDPR: Shop data erasure - fires 48hrs after uninstall (required for compliance)
-topics = ["shop/redact"]
-uri = "/webhooks/shop/redact"
+# NOTE: GDPR webhooks (customers/data_request, customers/redact, shop/redact)
+# are NOT registered here. They are:
+# 1. Only required for published/public apps (not dev apps)
+# 2. Automatically registered by Shopify when you publish the app
+# 3. Cannot be tested in development mode
+# The handler endpoints are implemented in web/backend/routes/webhooks.js
+# and will be available when the app is published.
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
