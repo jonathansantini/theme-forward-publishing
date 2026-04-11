@@ -31,27 +31,35 @@ npx playwright install chromium
 ### Run All Tests
 
 ```bash
-# Run all tests (backend + frontend)
+# ✅ Backend tests (11 tests - all passing)
 npm test
+# OR run from root: npm run test:backend
 
-# Run with watch mode (auto-rerun on changes)
+# ⚠️  Frontend tests (7 tests - run from frontend directory)
+cd web/frontend && npm test
+
+# Run with watch mode
 npm run test:watch
 
-# Run with UI (visual test runner)
-npm run test:ui
-
-# Run E2E tests
+# Run E2E tests (Playwright)
 npm run test:e2e
 ```
+
+**Note:** Frontend tests currently work best when run from `web/frontend` directory due to workspace configuration. Backend tests (11) run perfectly from root.
 
 ### Run Specific Tests
 
 ```bash
-# Backend tests only
+# Backend tests only (from root)
 npm run test:backend
+cd web/backend && npm test
 
-# Frontend tests only
-npm run test:frontend
+# Frontend tests (from frontend directory)
+cd web/frontend && npm test
+cd web/frontend && npm run test:watch
+
+# E2E tests
+npm run test:e2e
 
 # Specific test file
 npm run test scheduler.test.js
