@@ -30,6 +30,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@rolldown/binding-darwin-arm64": "^1.0.0-rc.15",
     "@shopify/shopify-api": "^12.2.0",
     "@shopify/shopify-app-session-storage-memory": "^5.0.4",
     "@shopify/shopify-app-session-storage-redis": "^5.0.4",
