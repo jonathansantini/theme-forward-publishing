@@ -21,7 +21,8 @@ export default defineWorkspace([
     test: {
       name: 'backend',
       root: './web/backend',
-      exclude: ['**/node_modules/**', '**/dist/**', '**/e2e/**'],
+      include: ['**/__tests__/**/*.test.js'],
+      exclude: ['**/node_modules/**', '**/dist/**', '**/e2e/**', '**/*.spec.js'],
     },
   },
   {
@@ -29,7 +30,8 @@ export default defineWorkspace([
     test: {
       name: 'frontend',
       root: './web/frontend',
-      exclude: ['**/node_modules/**', '**/dist/**', '**/e2e/**'],
+      include: ['**/__tests__/**/*.test.jsx'],
+      exclude: ['**/node_modules/**', '**/dist/**', '**/e2e/**', '**/*.spec.js'],
     },
   },
 ]);
