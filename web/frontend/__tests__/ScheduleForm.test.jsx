@@ -40,12 +40,10 @@ vi.mock('../hooks/useTimezone', () => ({
 describe('ScheduleForm', () => {
   let mockOnSubmit;
   let mockOnCancel;
-  let user;
 
   beforeEach(() => {
     mockOnSubmit = vi.fn().mockResolvedValue(undefined);
     mockOnCancel = vi.fn();
-    user = userEvent.setup();
   });
 
   it('should render form fields', () => {
@@ -58,6 +56,7 @@ describe('ScheduleForm', () => {
   });
 
   it('should validate required fields', async () => {
+    const user = userEvent.setup();
     render(<ScheduleForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
 
     const submitButton = screen.getByRole('button', { name: /create schedule/i });
@@ -71,6 +70,7 @@ describe('ScheduleForm', () => {
   });
 
   it('should allow end time to be optional', async () => {
+    const user = userEvent.setup();
     render(<ScheduleForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
 
     const startTimeInput = screen.getByLabelText(/start date & time/i);
@@ -90,6 +90,7 @@ describe('ScheduleForm', () => {
   });
 
   it('should sanitize schedule name input', async () => {
+    const user = userEvent.setup();
     render(<ScheduleForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
 
     const nameInput = screen.getByLabelText(/schedule name/i);
@@ -112,6 +113,7 @@ describe('ScheduleForm', () => {
   });
 
   it('should show recurrence fields when enabled', async () => {
+    const user = userEvent.setup();
     render(<ScheduleForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
 
     const recurrenceCheckbox = screen.getByLabelText(/make this a recurring schedule/i);
@@ -124,6 +126,7 @@ describe('ScheduleForm', () => {
   });
 
   it('should call onCancel when cancel button is clicked', async () => {
+    const user = userEvent.setup();
     render(<ScheduleForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
 
     const cancelButton = screen.getByRole('button', { name: /cancel/i });
