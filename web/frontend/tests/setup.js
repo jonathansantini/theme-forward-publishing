@@ -9,6 +9,18 @@ import { cleanup } from '@testing-library/react';
 import { afterEach, beforeEach, vi } from 'vitest';
 import '@testing-library/jest-dom';
 
+// Mock isomorphic-dompurify to avoid ES module issues with nested dependencies
+// In tests, we just need basic sanitization functionality
+vi.mock('isomorphic-dompurify', () => ({
+  default: {
+    sanitize: (dirty) => {
+      // Simple sanitization for tests - just strip HTML tags
+      if (typeof dirty !== 'string') return '';
+      return dirty.replace(/<[^>]*>/g, '');
+    },
+  },
+}));
+
 // Cleanup after each test
 afterEach(() => {
   cleanup();
