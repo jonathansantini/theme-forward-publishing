@@ -40,7 +40,13 @@ export function createMockStorage() {
   return {
     getSchedules: vi.fn().mockImplementation(() => Promise.resolve([...schedules])),
     getPendingSchedules: vi.fn().mockImplementation(() =>
-      Promise.resolve(schedules.filter((s) => s.finalized && !s.startExecuted))
+      Promise.resolve(
+        schedules.filter(
+          (s) =>
+            s.finalized &&
+            (!s.startExecuted || (s.startExecuted && s.endTime && !s.endExecuted))
+        )
+      )
     ),
     getSchedule: vi.fn().mockImplementation((id) =>
       Promise.resolve(schedules.find((s) => s.id === id) || null)

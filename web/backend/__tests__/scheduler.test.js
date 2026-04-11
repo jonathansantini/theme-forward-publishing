@@ -66,7 +66,8 @@ describe('Scheduler', () => {
         startExecuted: false,
       });
 
-      mockStorage.getSchedules.mockResolvedValue([schedule]);
+      // Mock getPendingSchedules to return the test schedule
+      mockStorage.getPendingSchedules.mockResolvedValue([schedule]);
 
       await scheduler.processPendingSchedules();
 
@@ -115,7 +116,8 @@ describe('Scheduler', () => {
         startExecuted: false,
       });
 
-      mockStorage.getSchedules.mockResolvedValue([schedule]);
+      // Mock getPendingSchedules to return the test schedule
+      mockStorage.getPendingSchedules.mockResolvedValue([schedule]);
 
       await scheduler.processPendingSchedules();
 
@@ -141,7 +143,8 @@ describe('Scheduler', () => {
         endExecuted: false,
       });
 
-      mockStorage.getSchedules.mockResolvedValue([schedule]);
+      // Mock getPendingSchedules to return the test schedule
+      mockStorage.getPendingSchedules.mockResolvedValue([schedule]);
 
       await scheduler.processPendingSchedules();
 
