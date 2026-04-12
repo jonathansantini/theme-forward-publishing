@@ -2,14 +2,15 @@
 
 **Status:** Approved - Ready for Development  
 **Last Updated:** 2026-04-12  
-**Estimated Timeline:** 8-11 weeks for Tier 1 + 2
+**Estimated Timeline:** 9-13 weeks (Phase 0 + Tier 1 + 2)
 
 ---
 
 ## 🎯 Approved Scope
 
-Building **Tier 1 + Tier 2 features** to position as the only Shopify scheduling app with:
+Building **database foundation + Tier 1 + Tier 2 features** to position as the only Shopify scheduling app with:
 - ✅ Time-based scheduling (already built)
+- ✅ Production-ready database with audit logging (new - Phase 0)
 - ✅ Customer segmentation (new - competitive gap)
 - ✅ Performance analytics (new - differentiator)
 - ✅ AI-native Sidekick integration (new - first mover)
@@ -19,6 +20,140 @@ Building **Tier 1 + Tier 2 features** to position as the only Shopify scheduling
 ---
 
 ## 📅 Implementation Phases
+
+### Phase 0: Database Foundation (1-2 weeks) 🆕
+
+**Goal:** Replace metafield-only storage with PostgreSQL for production readiness, unlimited logging, and audit trails.
+
+**Why First:**
+- Foundation for customer segmentation queries
+- Required for analytics data storage (Phase 3)
+- Unlimited execution history (current: only 100 logs kept)
+- Full audit trail (who created/modified schedules)
+- Production-ready for client deployments
+- Better to migrate small dataset now vs large dataset later
+
+**What Gets Built:**
+- PostgreSQL database + Prisma ORM
+- Database schema for schedules, execution logs, audit logs, backups
+- Migration scripts from metafields to database
+- Audit logging system (track who/what/when)
+- User attribution on all schedule operations
+- Unlimited execution history storage
+
+**Database Schema:**
+```sql
+-- Schedules table
+schedules (
+  id UUID PRIMARY KEY,
+  shop_id VARCHAR(255) NOT NULL,
+  theme_id VARCHAR(255) NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  action VARCHAR(50) NOT NULL,
+  section_id VARCHAR(255) NOT NULL,
+  template_name VARCHAR(255) NOT NULL,
+  start_time TIMESTAMP NOT NULL,
+  end_time TIMESTAMP,
+  status VARCHAR(50) NOT NULL,
+  finalized BOOLEAN DEFAULT FALSE,
+  customer_tags JSONB,  -- For Phase 1
+  recurrence JSONB,
+  created_by VARCHAR(255),
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+)
+
+-- Execution logs (unlimited history)
+execution_logs (
+  id UUID PRIMARY KEY,
+  schedule_id UUID REFERENCES schedules(id),
+  action VARCHAR(50) NOT NULL,
+  status VARCHAR(50) NOT NULL,
+  error TEXT,
+  duration_ms INTEGER,
+  timestamp TIMESTAMP DEFAULT NOW()
+)
+
+-- Audit logs (track all changes)
+audit_logs (
+  id UUID PRIMARY KEY,
+  entity_type VARCHAR(50) NOT NULL,
+  entity_id VARCHAR(255) NOT NULL,
+  action VARCHAR(50) NOT NULL,
+  user_id VARCHAR(255),
+  changes JSONB,
+  timestamp TIMESTAMP DEFAULT NOW()
+)
+
+-- Backups (unlimited)
+backups (
+  id UUID PRIMARY KEY,
+  theme_id VARCHAR(255) NOT NULL,
+  template_name VARCHAR(255) NOT NULL,
+  section_id VARCHAR(255) NOT NULL,
+  section_data JSONB NOT NULL,
+  timestamp TIMESTAMP DEFAULT NOW()
+)
+```
+
+**Files to Create:**
+- `web/backend/prisma/schema.prisma` - Prisma schema definition
+- `web/backend/prisma/migrations/` - Database migrations
+- `web/backend/services/database.js` - Database service layer
+- `web/backend/services/audit-logger.js` - Audit logging service
+- `web/backend/scripts/migrate-from-metafields.js` - Migration script
+
+**Files to Modify:**
+- `web/backend/services/metafield-storage.js` - Replace with database calls (keep class interface)
+- `web/backend/package.json` - Add Prisma dependencies
+- `web/backend/.env.example` - Add DATABASE_URL
+- `web/backend/__tests__/database.test.js` - Database service tests
+
+**Migration Strategy:**
+1. Set up PostgreSQL (Heroku/Render/Railway - ~$7-9/month)
+2. Install Prisma ORM
+3. Create database schema
+4. Write migration script to copy existing metafield data
+5. Run migration in dev environment
+6. Test all CRUD operations
+7. Deploy to production with zero-downtime migration
+
+**Testing:**
+- Test all schedule CRUD operations with database
+- Verify audit logs capture create/update/delete
+- Test migration script with production metafield data
+- Performance testing: database vs metafield queries
+- Rollback testing (verify metafield backup works)
+
+**Audit Logging Example:**
+```javascript
+// Every action automatically logged:
+{
+  entity_type: 'schedule',
+  entity_id: 'abc-123',
+  action: 'created',
+  user_id: 'admin@store.myshopify.com',
+  changes: {
+    name: 'Black Friday Sale',
+    start_time: '2026-11-29T00:00:00Z',
+    action: 'show'
+  },
+  timestamp: '2026-04-12T10:30:00Z'
+}
+```
+
+**Benefits:**
+- ✅ Unlimited execution history (no more 100-log limit)
+- ✅ Full audit trail (compliance-ready for clients)
+- ✅ User attribution (know who created/modified what)
+- ✅ Production-ready architecture
+- ✅ No metafield size limits (65KB)
+- ✅ Better query performance for analytics
+- ✅ Foundation for Phases 1-4
+
+**Hosting Cost:** $7-9/month (Render/Railway/Heroku Postgres)
+
+---
 
 ### Phase 1: Customer Segmentation - Tag-Based (2-3 weeks)
 
@@ -33,18 +168,25 @@ Building **Tier 1 + Tier 2 features** to position as the only Shopify scheduling
 - Start simple: Shopify customer tags only (`premium`, `vip`, `wholesale`)
 - Theme app extension with Liquid conditionals
 - No advanced metafields or segments API (future phases)
+- Store customer tag rules in database (from Phase 0)
+
+**Benefits from Phase 0 Database:**
+- Customer tags stored in `schedules.customer_tags` JSONB column
+- Fast queries for schedules targeting specific customer segments
+- Audit trail of who added segmentation rules
 
 **Files to Modify:**
 - `web/frontend/components/ScheduleForm.jsx` - Add tag selector UI
-- `web/backend/services/metafield-storage.js` - Extend schema with `customerTags: []`
+- `web/backend/services/database.js` - Add customer_tags field to queries
 - `extensions/theme-app-extension/` - NEW: Create Liquid conditional rendering
-- `web/backend/__tests__/metafield-storage.test.js` - Add tag storage tests
+- `web/backend/__tests__/customer-segmentation.test.js` - Add tag filtering tests
 
 **Testing:**
 - Create schedules with tag rules in dev store
 - Test with tagged customers
 - Verify conditional rendering works
 - Edge cases: no tags, multiple tags, tag removal
+- Verify audit logs capture segmentation changes
 
 ---
 
@@ -63,6 +205,11 @@ Building **Tier 1 + Tier 2 features** to position as the only Shopify scheduling
 - Start with read-only (safer for early API adoption)
 - Add mutations later if API stable
 
+**Benefits from Phase 0 Database:**
+- Fast complex queries for Sidekick search ("schedules created this week")
+- Audit logs track Sidekick-initiated actions
+- Better performance for natural language queries
+
 **Guardrails for Early Adoption:**
 - Feature flag to enable/disable without redeploying
 - Read-only queries first (less risky)
@@ -80,6 +227,7 @@ Building **Tier 1 + Tier 2 features** to position as the only Shopify scheduling
 - Test natural language queries
 - Verify error handling
 - Document API limitations encountered
+- Verify Sidekick actions appear in audit logs
 
 ---
 
@@ -99,17 +247,36 @@ Building **Tier 1 + Tier 2 features** to position as the only Shopify scheduling
 - Build dashboard in admin UI
 - Start simple: before/after comparisons
 
+**REQUIRES Phase 0 Database:**
+- Analytics data stored in new `analytics_events` table
+- Unlimited event history (not possible with metafields)
+- Fast aggregation queries for dashboard
+- Time-series analysis for before/during/after metrics
+
+**New Database Tables:**
+```sql
+analytics_events (
+  id UUID PRIMARY KEY,
+  schedule_id UUID REFERENCES schedules(id),
+  event_type VARCHAR(50),  -- 'view', 'click', 'conversion'
+  customer_id VARCHAR(255),
+  session_id VARCHAR(255),
+  timestamp TIMESTAMP DEFAULT NOW()
+)
+```
+
 **Files to Create:**
 - `extensions/theme-app-extension/` - Add event tracking
 - `web/frontend/components/AnalyticsDashboard.jsx` - Dashboard UI
 - `web/backend/services/analytics.js` - Analytics API integration
-- `web/backend/services/metafield-storage.js` - Store analytics data
+- `web/backend/prisma/migrations/add_analytics.sql` - Analytics tables
 
 **Testing:**
 - Create tracked schedule
 - Generate test traffic
 - Verify metrics accuracy
 - Test report generation
+- Performance test: query 10K+ events
 
 ---
 
@@ -199,17 +366,22 @@ Building **Tier 1 + Tier 2 features** to position as the only Shopify scheduling
 
 ## 🚀 Next Session Action
 
-**Start Phase 1: Customer Segmentation**
+**Start Phase 0: Database Foundation** 
 
-1. Create feature branch: `claude/customer-segmentation-01AMsumUVBvqtWjwFvicurZM`
-2. Extend metafield schema with `customerTags` field
-3. Build tag selector UI in ScheduleForm
-4. Create theme app extension scaffolding
-5. Implement Liquid conditionals for tag-based rendering
-6. Write tests for tag storage and retrieval
-7. Test in dev store with tagged customers
+1. Create feature branch: `claude/database-foundation-01AMsumUVBvqtWjwFvicurZM`
+2. Set up PostgreSQL database (Heroku/Render/Railway)
+3. Install and configure Prisma ORM
+4. Create database schema (schedules, execution_logs, audit_logs, backups)
+5. Write migration script from metafields to database
+6. Update `MetafieldStorage` service to use database instead
+7. Add audit logging service
+8. Write comprehensive tests for database operations
+9. Test migration with existing metafield data
+10. Deploy to dev environment and verify
 
-**Estimated:** 2-3 weeks to complete Phase 1
+**Estimated:** 1-2 weeks to complete Phase 0
+
+**After Phase 0:** Move to Phase 1 (Customer Segmentation) with database foundation ready
 
 ---
 
