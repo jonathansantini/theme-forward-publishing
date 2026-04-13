@@ -157,4 +157,72 @@ describe('ScheduleForm', () => {
     expect(screen.getByDisplayValue('2026-04-15T12:00')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /update schedule/i })).toBeInTheDocument();
   });
+
+  it('should handle customer tag fields correctly', async () => {
+    const user = userEvent.setup();
+    render(<ScheduleForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
+
+    const includeTagsInput = screen.getByLabelText(/show to customers with tags/i);
+    const excludeTagsInput = screen.getByLabelText(/hide from customers with tags/i);
+    const startTimeInput = screen.getByLabelText(/start date & time/i);
+
+    // Fill in customer tags
+    await user.type(includeTagsInput, 'premium, vip');
+    await user.type(excludeTagsInput, 'wholesale, blocked');
+    await user.type(startTimeInput, '2026-04-15T10:00');
+
+    const submitButton = screen.getByRole('button', { name: /create schedule/i });
+    await user.click(submitButton);
+
+    await waitFor(() => {
+      expect(mockOnSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          includeTags: ['premium', 'vip'],
+          excludeTags: ['wholesale', 'blocked'],
+        })
+      );
+    });
+  });
+
+  it('should submit undefined for empty tag fields', async () => {
+    const user = userEvent.setup();
+    render(<ScheduleForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
+
+    const startTimeInput = screen.getByLabelText(/start date & time/i);
+    await user.type(startTimeInput, '2026-04-15T10:00');
+
+    const submitButton = screen.getByRole('button', { name: /create schedule/i });
+    await user.click(submitButton);
+
+    await waitFor(() => {
+      expect(mockOnSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          includeTags: undefined,
+          excludeTags: undefined,
+        })
+      );
+    });
+  });
+
+  it('should populate tag fields when editing existing schedule', () => {
+    const initialData = {
+      name: 'Premium Sale',
+      action: 'show',
+      startTime: '2026-04-15T10:00',
+      includeTags: ['premium', 'vip'],
+      excludeTags: ['wholesale'],
+    };
+
+    render(
+      <ScheduleForm
+        initialData={initialData}
+        onSubmit={mockOnSubmit}
+        onCancel={mockOnCancel}
+        submitLabel="Update Schedule"
+      />
+    );
+
+    expect(screen.getByDisplayValue('premium, vip')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('wholesale')).toBeInTheDocument();
+  });
 });

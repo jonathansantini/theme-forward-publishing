@@ -382,6 +382,33 @@ export class Scheduler {
       }
     }
 
+    // Update active_schedules metafield for customer-aware content targeting
+    try {
+      const allSchedules = await this.storage.getSchedules();
+      const currentlyActive = allSchedules.filter(schedule => {
+        // Only include finalized schedules
+        if (!schedule.finalized) return false;
+
+        // Include schedules that have started but not ended
+        if (schedule.startTime && schedule.startExecuted && !schedule.endExecuted) {
+          return true;
+        }
+
+        // Include schedules with no end time that have started
+        if (schedule.startTime && schedule.startExecuted && !schedule.endTime) {
+          return true;
+        }
+
+        return false;
+      });
+
+      console.log(`[Scheduler] Found ${currentlyActive.length} currently active schedules with customer targeting`);
+      await this.storage.updateActiveSchedules(currentlyActive);
+    } catch (error) {
+      console.error('[Scheduler] Failed to update active_schedules metafield:', error);
+      // Don't fail the whole process if this fails
+    }
+
     return results;
   }
 
