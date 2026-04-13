@@ -13,7 +13,7 @@ test.describe('Schedule Workflow', () => {
     await page.goto('/');
 
     // Wait for app to load
-    await page.waitForSelector('text=Section Scheduler', { timeout: 10000 });
+    await page.waitForSelector('text=Smart Content Scheduler', { timeout: 10000 });
   });
 
   test('should create, publish, and unpublish a schedule', async ({ page }) => {

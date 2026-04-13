@@ -42,14 +42,14 @@ function Settings() {
         <Layout.Section>
           <Card>
             <Text as="h2" variant="headingMd">
-              About Section Scheduler
+              About Smart Content Scheduler
             </Text>
             <div style={{ marginTop: '16px' }}>
               <Text as="p" variant="bodyMd">
                 Version: 1.0.0 (MVP)
               </Text>
               <Text as="p" variant="bodyMd">
-                This app allows you to schedule theme sections to show or hide at
+                This app allows you to schedule theme content (sections and blocks) to show or hide at
                 specific times with recurring schedule support.
               </Text>
             </div>

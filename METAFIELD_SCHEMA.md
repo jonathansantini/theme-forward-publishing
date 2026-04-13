@@ -1,6 +1,6 @@
 # Metafield Schema Documentation
 
-This document describes the metafield structure used in the MVP version of the Section Scheduler app and provides a migration path to PostgreSQL for scaling.
+This document describes the metafield structure used in the MVP version of the Smart Content Scheduler app and provides a migration path to PostgreSQL for scaling.
 
 ## Overview
 

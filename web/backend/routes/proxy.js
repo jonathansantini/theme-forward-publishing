@@ -298,7 +298,7 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
   const blocksMap = hiddenBlocks || {};
 
   return `/**
- * Section Scheduler - Dynamic Section & Block Visibility
+ * Smart Content Scheduler - Dynamic Section & Block Visibility
  * Version: 2.0.0-customizer-badges
  * Generated: ${new Date().toISOString()}
  * Hidden sections: ${sectionsList.join(', ')}
@@ -307,12 +307,12 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
 (function() {
   'use strict';
 
-  console.log('[Section Scheduler] Script version: 2.0.0-customizer-badges');
+  console.log('[Smart Content Scheduler] Script version: 2.0.0-customizer-badges');
 
   var hiddenSections = ${JSON.stringify(sectionsList)};
   var hiddenBlocks = ${JSON.stringify(blocksMap)};
 
-  console.log('[Section Scheduler Inline] removeBlocks called, hiddenBlocks:', hiddenBlocks);
+  console.log('[Smart Content Scheduler Inline] removeBlocks called, hiddenBlocks:', hiddenBlocks);
 
   // Check if we're in the theme customizer
   function isInCustomizer() {
@@ -335,7 +335,7 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
       }
     } catch (e) {
       // Cross-origin, can't access parent URL
-      console.log('[Section Scheduler] Cannot access parent URL (CORS)');
+      console.log('[Smart Content Scheduler] Cannot access parent URL (CORS)');
     }
 
     // Method 3: Check iframe attributes via frameElement
@@ -345,7 +345,7 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
         var iframeClass = window.frameElement.className || '';
         var iframeTitle = window.frameElement.title || '';
 
-        console.log('[Section Scheduler] Iframe detected:', {
+        console.log('[Smart Content Scheduler] Iframe detected:', {
           id: iframeId,
           class: iframeClass,
           title: iframeTitle
@@ -359,7 +359,7 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
         }
       }
     } catch (e) {
-      console.log('[Section Scheduler] Cannot access frameElement:', e.message);
+      console.log('[Smart Content Scheduler] Cannot access frameElement:', e.message);
     }
 
     // Method 4: If we're in an iframe but can't determine the parent,
@@ -368,7 +368,7 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
   }
 
   var inCustomizer = isInCustomizer();
-  console.log('[Section Scheduler] In customizer mode:', inCustomizer);
+  console.log('[Smart Content Scheduler] In customizer mode:', inCustomizer);
 
   // Function to remove blocks from sections
   function removeBlocks() {
@@ -376,11 +376,11 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
 
     for (var sectionId in hiddenBlocks) {
       var blockIds = hiddenBlocks[sectionId];
-      console.log('[Section Scheduler Inline] Processing section:', sectionId);
+      console.log('[Smart Content Scheduler Inline] Processing section:', sectionId);
 
       // Find the section container
       var sectionContainer = document.querySelector('[id*="' + sectionId + '"]');
-      console.log('[Section Scheduler Inline] Section container found:', !!sectionContainer);
+      console.log('[Smart Content Scheduler Inline] Section container found:', !!sectionContainer);
 
       if (sectionContainer) {
         blockIds.forEach(function(blockId) {
@@ -396,7 +396,7 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
             blocks.forEach(function(block) {
               block.remove();
               removed++;
-              console.log('[Section Scheduler Inline] Removed block:', blockId);
+              console.log('[Smart Content Scheduler Inline] Removed block:', blockId);
             });
           });
         });
@@ -404,7 +404,7 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
     }
 
     if (removed > 0 && window.console) {
-      console.log('[Section Scheduler Inline] Removed ' + removed + ' block(s) from DOM');
+      console.log('[Smart Content Scheduler Inline] Removed ' + removed + ' block(s) from DOM');
     }
   }
 
@@ -444,7 +444,7 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
     });
 
     if (removed > 0 && window.console) {
-      console.log('[Section Scheduler] Removed ' + removed + ' section(s) from DOM');
+      console.log('[Smart Content Scheduler] Removed ' + removed + ' section(s) from DOM');
     }
   }
 
@@ -452,7 +452,7 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
   function applyVisibility() {
     // Skip hiding in customizer - badges will show status instead
     if (inCustomizer) {
-      console.log('[Section Scheduler] Skipping hide in customizer - badges will show status');
+      console.log('[Smart Content Scheduler] Skipping hide in customizer - badges will show status');
       return;
     }
     removeSections();
@@ -478,11 +478,11 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
 
   async function injectCustomizerBadges() {
     if (!inCustomizer) {
-      console.log('[Section Scheduler] Not in customizer, skipping badges');
+      console.log('[Smart Content Scheduler] Not in customizer, skipping badges');
       return;
     }
 
-    console.log('[Section Scheduler] In customizer mode - injecting badges');
+    console.log('[Smart Content Scheduler] In customizer mode - injecting badges');
 
     try {
       // Get current template name from multiple sources
@@ -522,10 +522,10 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
         template = template + '.json';
       }
 
-      console.log('[Section Scheduler] Detected template:', template);
+      console.log('[Smart Content Scheduler] Detected template:', template);
 
       if (!template) {
-        console.log('[Section Scheduler] Could not determine template name');
+        console.log('[Smart Content Scheduler] Could not determine template name');
         return;
       }
 
@@ -534,7 +534,7 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
       var data = await response.json();
       var schedules = data.schedules || [];
 
-      console.log('[Section Scheduler] Found ' + schedules.length + ' schedules for template:', template);
+      console.log('[Smart Content Scheduler] Found ' + schedules.length + ' schedules for template:', template);
 
       // Inject CSS for badges
       injectBadgeStyles();
@@ -548,7 +548,7 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
       });
 
     } catch (error) {
-      console.error('[Section Scheduler] Error injecting customizer badges:', error);
+      console.error('[Smart Content Scheduler] Error injecting customizer badges:', error);
     }
   }
 
@@ -640,7 +640,7 @@ function generateJavaScript(hiddenSections, hiddenBlocks) {
     }
 
     if (!sectionElement) {
-      console.log('[Section Scheduler] Section element not found for:', schedule.sectionId);
+      console.log('[Smart Content Scheduler] Section element not found for:', schedule.sectionId);
       return;
     }
 
@@ -734,7 +734,7 @@ function generateCSS(hiddenSections) {
   ).join('\n');
 
   return `/**
- * Section Scheduler - Section Visibility
+ * Smart Content Scheduler - Section Visibility
  * Generated: ${new Date().toISOString()}
  * Hidden sections: ${sectionsList.join(', ')}
  */

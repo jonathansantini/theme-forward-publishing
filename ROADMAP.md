@@ -1,4 +1,4 @@
-# Section Scheduler - Feature Roadmap
+# Smart Content Scheduler - Feature Roadmap
 
 **Status:** Approved - Ready for Development  
 **Last Updated:** 2026-04-12  

@@ -1,5 +1,5 @@
 {
-  "name": "Section Scheduler",
+  "name": "Smart Content Scheduler",
   "blocks": {
     "app": {
       "name": "Section Visibility Controller"

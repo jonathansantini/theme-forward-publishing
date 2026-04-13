@@ -1,7 +1,7 @@
 {
-  "name": "shopify-section-scheduler",
+  "name": "shopify-smart-content-scheduler",
   "version": "1.0.0",
-  "description": "Shopify app for scheduling theme section visibility",
+  "description": "Shopify app for scheduling theme content visibility with smart customer segmentation",
   "main": "web/backend/server.js",
   "type": "module",
   "scripts": {

@@ -1,7 +1,7 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "560df7c4653050d8edc9862692d5c016"
-name = "section-schedular"
+name = "smart-content-scheduler"
 application_url = "https://a8594397d58b.ngrok-free.app"
 embedded = true
 
