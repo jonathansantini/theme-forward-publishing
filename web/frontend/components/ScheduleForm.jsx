@@ -31,6 +31,9 @@ function ScheduleForm({ initialData, onSubmit, onCancel, submitLabel = 'Create S
     recurrenceEndTime: initialData?.recurrence?.endTime || '23:59',
     recurrenceEndDayOfWeek: initialData?.recurrence?.endDayOfWeek || 0,
     recurrenceEndDayOfMonth: initialData?.recurrence?.endDayOfMonth || 1,
+    // Customer segmentation tags
+    includeTags: initialData?.includeTags?.join(', ') || '',
+    excludeTags: initialData?.excludeTags?.join(', ') || '',
   });
 
   const [errors, setErrors] = useState({});
@@ -135,6 +138,18 @@ function ScheduleForm({ initialData, onSubmit, onCancel, submitLabel = 'Create S
         ALLOWED_ATTR: [], // Strip all attributes
       });
 
+      // Parse tags from comma-separated strings to arrays
+      const parseTagString = (tagString) => {
+        if (!tagString || !tagString.trim()) return [];
+        return tagString
+          .split(',')
+          .map(tag => tag.trim())
+          .filter(tag => tag.length > 0);
+      };
+
+      const includeTags = parseTagString(formData.includeTags);
+      const excludeTags = parseTagString(formData.excludeTags);
+
       const scheduleData = {
         name: sanitizedName,
         action: formData.action,
@@ -152,6 +167,9 @@ function ScheduleForm({ initialData, onSubmit, onCancel, submitLabel = 'Create S
               endDayOfMonth: formData.recurrenceEndDayOfMonth,
             }
           : { enabled: false },
+        // Customer segmentation
+        includeTags: includeTags.length > 0 ? includeTags : undefined,
+        excludeTags: excludeTags.length > 0 ? excludeTags : undefined,
       };
 
       await onSubmit(scheduleData);
@@ -212,6 +230,30 @@ function ScheduleForm({ initialData, onSubmit, onCancel, submitLabel = 'Create S
           onChange={handleChange('action')}
           helpText="Choose whether to show or hide the section"
         />
+
+        <Text as="h3" variant="headingMd">
+          Customer Targeting (Optional)
+        </Text>
+
+        <TextField
+          label="Show to customers with tags"
+          value={formData.includeTags}
+          onChange={handleChange('includeTags')}
+          placeholder="e.g., premium, vip, wholesale"
+          helpText="Enter customer tags separated by commas. Only customers with at least one of these tags will see this content. Leave blank to show to everyone."
+        />
+
+        <TextField
+          label="Hide from customers with tags"
+          value={formData.excludeTags}
+          onChange={handleChange('excludeTags')}
+          placeholder="e.g., wholesale, blocked"
+          helpText="Enter customer tags separated by commas. Customers with any of these tags will NOT see this content. Leave blank for no exclusions."
+        />
+
+        <Text as="h3" variant="headingMd">
+          Timing
+        </Text>
 
         <TextField
           label="Start Date & Time"

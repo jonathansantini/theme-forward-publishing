@@ -1,10 +1,10 @@
-# Shopify Section Scheduler
+# Smart Content Scheduler
 
-A Shopify app that allows merchants to schedule the visibility of theme sections at specific times with recurring schedule support. The app uses a **Theme App Extension** and **App Proxy** to dynamically show/hide sections without modifying theme files directly.
+A Shopify app that allows merchants to schedule the visibility of theme content (sections and blocks) at specific times with recurring schedule support. The app uses a **Theme App Extension** and **App Proxy** to dynamically show/hide content without modifying theme files directly.
 
 ## Features
 
-- **Section Scheduling**: Schedule sections to show/hide at specific dates/times
+- **Smart Content Scheduling**: Schedule content (sections and blocks) to show/hide at specific dates/times
 - **Recurring Schedules**: Support for daily, weekly, and monthly recurring patterns
 - **Timezone Support**: All schedules use the store's configured timezone
 - **Template Support**: Works with all Online Store 2.0 template types (homepage, product, collection, etc.)
@@ -26,7 +26,7 @@ A Shopify app that allows merchants to schedule the visibility of theme sections
 ### Project Structure
 
 ```
-shopify-section-scheduler/
+smart-content-scheduler/
 ├── web/
 │   ├── backend/
 │   │   ├── server.js              # Express server
@@ -61,7 +61,7 @@ shopify-section-scheduler/
 
 ```bash
 git clone <repository-url>
-cd shopify-section-scheduler
+cd smart-content-scheduler
 ```
 
 2. **Install dependencies**

@@ -85,7 +85,7 @@ router.post('/customers/data_request', async (req, res) => {
     // No customer PII is collected or stored
 
     const responseData = {
-      app_name: 'Section Scheduler',
+      app_name: 'Smart Content Scheduler',
       shop_domain: shop,
       customer_id: webhookData.customer?.id,
       data_collected: 'none',

@@ -59,9 +59,9 @@ shopify app deploy
 1. In the Shopify admin, go to **Online Store** → **Themes**
 2. Click **Customize** on your active theme
 3. In the theme editor, click the **</>** (code) icon in the header
-4. Add the **"Section Scheduler"** app block to the `<head>` section:
+4. Add the **"Smart Content Scheduler"** app block to the `<head>` section:
    - Click "Add block" in the header section
-   - Find "Section Scheduler" under "Apps"
+   - Find "Smart Content Scheduler" under "Apps"
    - Add it
 
 Alternatively, you can add it to specific templates by editing the JSON template files.
@@ -75,7 +75,7 @@ The app block has a setting to switch between two modes:
 
 To change the mode:
 
-1. In the theme editor, click the "Section Scheduler" block
+1. In the theme editor, click the "Smart Content Scheduler" block
 2. In the block settings, select your preferred **Visibility Mode**
 3. Click **Save**
 
@@ -86,7 +86,7 @@ To change the mode:
 ```
 Customer visits page
         ↓
-Theme loads "Section Scheduler" app block in <head>
+Theme loads "Smart Content Scheduler" app block in <head>
         ↓
 App block loads: <script src="/apps/scheduler/visibility.js?mode=js"></script>
         ↓
@@ -154,7 +154,7 @@ You should see JavaScript code like:
 2. Open browser DevTools (F12)
 3. Check the Console for messages:
    ```
-   [Section Scheduler] Removed 2 section(s) from DOM
+   [Smart Content Scheduler] Removed 2 section(s) from DOM
    ```
 4. Inspect the DOM - hidden sections should not appear in the HTML
 
@@ -174,7 +174,7 @@ You should see JavaScript code like:
 **Possible causes:**
 
 1. **App block not installed in theme**
-   - Check theme editor → Ensure "Section Scheduler" block is in `<head>`
+   - Check theme editor → Ensure "Smart Content Scheduler" block is in `<head>`
 
 2. **App proxy not configured**
    - Verify Partner Dashboard settings

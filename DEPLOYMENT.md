@@ -1,6 +1,6 @@
 # Deployment Guide
 
-This guide covers deploying the Section Scheduler app to Heroku and other platforms.
+This guide covers deploying the Smart Content Scheduler app to Heroku and other platforms.
 
 ## Table of Contents
 
@@ -247,7 +247,7 @@ heroku ps
 heroku addons:create newrelic:wayne
 
 # Configure
-heroku config:set NEW_RELIC_APP_NAME="Section Scheduler"
+heroku config:set NEW_RELIC_APP_NAME="Smart Content Scheduler"
 ```
 
 #### Papertrail (Log Management)

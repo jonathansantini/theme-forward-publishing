@@ -1,6 +1,6 @@
 # API Reference
 
-This document provides detailed information about all GraphQL queries and mutations used by the Section Scheduler app.
+This document provides detailed information about all GraphQL queries and mutations used by the Smart Content Scheduler app.
 
 ## GraphQL Admin API Version
 

@@ -1,6 +1,6 @@
 # Testing Guide
 
-Complete guide to testing the Section Scheduler Shopify app.
+Complete guide to testing the Smart Content Scheduler Shopify app.
 
 ## 📋 Table of Contents
 

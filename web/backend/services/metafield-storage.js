@@ -372,6 +372,43 @@ export class MetafieldStorage {
 
     return await this.client.setShopMetafields(metafields);
   }
+
+  /**
+   * Update active schedules metafield for customer-aware content targeting
+   * This metafield stores currently active schedules with their customer tag rules
+   * The theme app extension reads this to evaluate customer tags at render time
+   */
+  async updateActiveSchedules(activeSchedules) {
+    try {
+      const shopInfo = await this.client.getShopInfo();
+
+      // Build active schedules array with only necessary fields for Liquid evaluation
+      const schedulesForLiquid = activeSchedules.map(schedule => ({
+        sectionId: schedule.sectionId,
+        blockId: schedule.blockIds?.[0] || null, // For now, support single block
+        action: schedule.action,
+        includeTags: schedule.includeTags || [],
+        excludeTags: schedule.excludeTags || [],
+      }));
+
+      console.log('[MetafieldStorage] Updating active_schedules metafield:', schedulesForLiquid);
+
+      const metafields = [
+        {
+          ownerId: shopInfo.id,
+          namespace: this.namespace,
+          key: 'active_schedules',
+          type: 'json',
+          value: JSON.stringify(schedulesForLiquid),
+        },
+      ];
+
+      return await this.client.setShopMetafields(metafields);
+    } catch (error) {
+      console.error('[MetafieldStorage] Error updating active_schedules:', error);
+      throw error;
+    }
+  }
 }
 
 export default MetafieldStorage;

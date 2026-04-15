@@ -80,7 +80,7 @@ function Dashboard() {
 
   if (loading) {
     return (
-      <Page title="Section Scheduler">
+      <Page title="Smart Content Scheduler">
         <Layout>
           <Layout.Section>
             <Card>
@@ -99,7 +99,7 @@ function Dashboard() {
 
   if (error) {
     return (
-      <Page title="Section Scheduler">
+      <Page title="Smart Content Scheduler">
         <Layout>
           <Layout.Section>
             <Banner status="critical">
@@ -141,7 +141,7 @@ function Dashboard() {
 
   return (
     <Page
-      title="Section Scheduler"
+      title="Smart Content Scheduler"
       primaryAction={{
         content: 'Create Schedule',
         onAction: handleCreateSchedule,

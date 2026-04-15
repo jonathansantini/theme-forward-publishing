@@ -1,6 +1,6 @@
 # Troubleshooting Guide
 
-This guide helps resolve common issues with the Section Scheduler app.
+This guide helps resolve common issues with the Smart Content Scheduler app.
 
 ## Table of Contents
 

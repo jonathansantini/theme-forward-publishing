@@ -33,11 +33,69 @@
   {%- comment -%} Inline JavaScript mode: Generate JS directly from metafields {%- endcomment -%}
   {%- comment -%} This mode prevents flickering by removing elements before DOM finishes loading {%- endcomment -%}
 
-  {%- comment -%} Read hidden sections metafield - .value already returns parsed JSON {%- endcomment -%}
-  {% assign hidden_sections = shop.metafields.app_scheduler.hidden_sections.value %}
+  {%- comment -%} Read active schedules with customer targeting rules {%- endcomment -%}
+  {% assign active_schedules = shop.metafields.app_scheduler.active_schedules.value %}
 
-  {%- comment -%} Read hidden blocks metafield - .value already returns parsed JSON {%- endcomment -%}
-  {% assign hidden_blocks = shop.metafields.app_scheduler.hidden_blocks.value %}
+  {%- comment -%} Build hidden sections/blocks list based on customer tags {%- endcomment -%}
+  {% assign hidden_sections_string = "" %}
+  {% assign hidden_blocks = "" %}
+
+  {%- if active_schedules != blank -%}
+    {%- for schedule in active_schedules -%}
+      {%- comment -%} Determine if this schedule applies to current customer {%- endcomment -%}
+      {%- assign customer_matches = true -%}
+
+      {%- comment -%} Check includeTags - customer must have at least one tag {%- endcomment -%}
+      {%- if schedule.includeTags and schedule.includeTags.size > 0 -%}
+        {%- assign has_include_tag = false -%}
+        {%- if customer -%}
+          {%- for tag in schedule.includeTags -%}
+            {%- if customer.tags contains tag -%}
+              {%- assign has_include_tag = true -%}
+              {%- break -%}
+            {%- endif -%}
+          {%- endfor -%}
+        {%- endif -%}
+        {%- assign customer_matches = has_include_tag -%}
+      {%- endif -%}
+
+      {%- comment -%} Check excludeTags - customer must NOT have any tag {%- endcomment -%}
+      {%- if customer_matches and schedule.excludeTags and schedule.excludeTags.size > 0 -%}
+        {%- if customer -%}
+          {%- for tag in schedule.excludeTags -%}
+            {%- if customer.tags contains tag -%}
+              {%- assign customer_matches = false -%}
+              {%- break -%}
+            {%- endif -%}
+          {%- endfor -%}
+        {%- endif -%}
+      {%- endif -%}
+
+      {%- comment -%} If customer matches, apply hide action {%- endcomment -%}
+      {%- if customer_matches and schedule.action == 'hide' -%}
+        {%- if hidden_sections_string == "" -%}
+          {%- assign hidden_sections_string = schedule.sectionId -%}
+        {%- else -%}
+          {%- assign hidden_sections_string = hidden_sections_string | append: "," | append: schedule.sectionId -%}
+        {%- endif -%}
+      {%- endif -%}
+    {%- endfor -%}
+
+    {%- comment -%} Convert comma-separated string to array {%- endcomment -%}
+    {%- if hidden_sections_string != "" -%}
+      {% assign hidden_sections = hidden_sections_string | split: "," %}
+    {%- else -%}
+      {% assign hidden_sections = "" | split: "" %}
+    {%- endif -%}
+  {%- endif -%}
+
+  {%- comment -%} Fallback to legacy hidden_sections if no active_schedules {%- endcomment -%}
+  {%- if active_schedules == blank -%}
+    {% assign hidden_sections = shop.metafields.app_scheduler.hidden_sections.value %}
+    {% assign hidden_blocks = shop.metafields.app_scheduler.hidden_blocks.value %}
+  {%- else -%}
+    {% assign hidden_blocks = "" %}
+  {%- endif -%}
 
   {%- comment -%} Only output script if there are sections or blocks to hide {%- endcomment -%}
   {% if hidden_sections != blank or hidden_blocks != blank %}
@@ -218,14 +276,17 @@
 
 {% comment %} Debug info - always visible for troubleshooting {% endcomment %}
 <script>
-  console.log('[Section Scheduler] Visibility mode: {{ visibility_mode }}');
+  console.log('[Smart Content Scheduler] Visibility mode: {{ visibility_mode }}');
+  console.log('[Smart Content Scheduler] Customer logged in:', {{ customer | json }} !== null);
+  {% if customer %}
+    console.log('[Smart Content Scheduler] Customer tags:', {{ customer.tags | json }});
+  {% endif %}
   {% if visibility_mode == 'inline-css' %}
-    console.log('[Section Scheduler] Hidden sections:', {{ hidden_sections | json }});
-    console.log('[Section Scheduler] Hidden blocks:', {{ hidden_blocks | json }});
-    console.log('[Section Scheduler] Hidden sections type:', typeof {{ hidden_sections | json }});
-    console.log('[Section Scheduler] Hidden blocks type:', typeof {{ hidden_blocks | json }});
+    console.log('[Smart Content Scheduler] Active schedules:', {{ active_schedules | json }});
+    console.log('[Smart Content Scheduler] Hidden sections (after tag evaluation):', {{ hidden_sections | json }});
+    console.log('[Smart Content Scheduler] Hidden blocks:', {{ hidden_blocks | json }});
   {% else %}
-    console.log('[Section Scheduler] Loading from app proxy: /apps/scheduler/visibility.js?mode={{ visibility_mode }}');
+    console.log('[Smart Content Scheduler] Loading from app proxy: /apps/scheduler/visibility.js?mode={{ visibility_mode }}');
   {% endif %}
 </script>
 
