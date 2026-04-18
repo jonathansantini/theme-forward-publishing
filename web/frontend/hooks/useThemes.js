@@ -3,6 +3,34 @@ import { useAuthenticatedFetch } from '@shopify/app-bridge-react';
 
 const API_BASE = '/api';
 
+export function useAllThemes() {
+  const [themes, setThemes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const fetch = useAuthenticatedFetch();
+
+  useEffect(() => {
+    const fetchThemes = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await fetch(`${API_BASE}/themes`);
+        const data = await response.json();
+        setThemes(data.themes || []);
+      } catch (err) {
+        console.error('Error fetching all themes:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchThemes();
+  }, [fetch]);
+
+  return { themes, loading, error };
+}
+
 export function useThemes() {
   const [publishedTheme, setPublishedTheme] = useState(null);
   const [loading, setLoading] = useState(true);

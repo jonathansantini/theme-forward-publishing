@@ -18,6 +18,20 @@ function initServices(session) {
 }
 
 /**
+ * GET /api/themes - Get all themes (published + unpublished)
+ */
+router.get('/', verifyAuth, async (req, res) => {
+  try {
+    const { graphqlClient } = initServices(req.shopifySession);
+    const themes = await graphqlClient.getThemes();
+    res.json({ themes });
+  } catch (error) {
+    console.error('ERROR in /themes route:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * GET /api/themes/published - Get the published theme
  */
 console.log('[THEMES.JS] Route handler being registered for /published');

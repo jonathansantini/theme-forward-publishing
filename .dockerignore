@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+web/frontend/node_modules/
+web/backend/node_modules/
+
+# Build output (rebuilt in Docker)
+web/frontend/dist/
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.production
+
+# Dev/test files
+e2e/
+web/backend/__tests__/
+web/frontend/__tests__/
+*.test.js
+*.test.jsx
+*.spec.js
+playwright.config.*
+vitest.config.*
+
+# Logs
+*.log
+logs/
+
+# OS/IDE
+.DS_Store
+.vscode/
+.idea/
+
+# Git
+.git/
+.gitignore
+
+# Docs
+*.md
+ROADMAP.md
+DEPLOYMENT.md
+TROUBLESHOOTING.md
+API_REFERENCE.md
+METAFIELD_SCHEMA.md
+APP_PROXY_SETUP.md
+UPGRADE_NOTES.md
+
+# Shopify CLI
+.shopify/

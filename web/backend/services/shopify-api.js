@@ -250,6 +250,26 @@ export class ShopifyGraphQLClient {
   }
 
   /**
+   * Get all themes (published + unpublished)
+   */
+  async getThemes() {
+    const query = `
+      query getThemes {
+        themes(first: 25) {
+          nodes {
+            id
+            name
+            role
+          }
+        }
+      }
+    `;
+
+    const response = await this.query(query);
+    return response.themes.nodes;
+  }
+
+  /**
    * Get published theme
    */
   async getPublishedTheme() {
